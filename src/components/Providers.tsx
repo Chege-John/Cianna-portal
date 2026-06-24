@@ -2,6 +2,13 @@
 
 import React, { useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { registerLicense } from "@syncfusion/ej2-base";
+
+// Register Syncfusion license key to disable trial warning watermarks
+const syncfusionLicenseKey = process.env.NEXT_PUBLIC_SYNCFUSION_LICENSE_KEY;
+if (syncfusionLicenseKey) {
+  registerLicense(syncfusionLicenseKey);
+}
 
 export function Providers({ children }: { children: React.ReactNode }) {
   // Create stateful QueryClient to prevent recreation during re-renders

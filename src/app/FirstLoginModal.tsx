@@ -174,7 +174,7 @@ export default function FirstLoginModal({
             className="w-full bg-[#256ff1] hover:bg-[#3b7eff] text-white font-semibold py-3.5 rounded-xl 
               transition-all duration-300 ease-in-out transform hover:scale-[1.02] active:scale-98 
               disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none 
-              shadow-lg hover:shadow-xl shadow-[#256ff1]/20 mt-4 flex items-center justify-center cursor-pointer"
+              shadow-sm hover:shadow-md shadow-[#256ff1]/20 mt-4 flex items-center justify-center cursor-pointer"
           >
             {isSubmitting ? (
               <span className="flex items-center justify-center">

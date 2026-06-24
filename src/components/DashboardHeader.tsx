@@ -1,7 +1,19 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useSchool, Role } from "@/context/SchoolContext";
+import { 
+  FaSearch, 
+  FaBell, 
+  FaQuestionCircle, 
+  FaCog, 
+  FaSignOutAlt, 
+  FaChevronDown, 
+  FaSun, 
+  FaMoon, 
+  FaBars,
+  FaUser
+} from "react-icons/fa";
 
 interface HeaderProps {
   activeTab: string;
@@ -14,49 +26,50 @@ export const DashboardHeader: React.FC<HeaderProps> = ({
   sidebarOpen,
   setSidebarOpen
 }) => {
-  const { currentUser, switchRole } = useSchool();
+  const { currentUser, switchRole, logout, setActiveTab } = useSchool();
   const [theme, setTheme] = useState<"light" | "dark">("light");
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const userMenuRef = useRef<HTMLDivElement>(null);
 
-  // Load and apply theme
+  // Force Light Theme unconditionally as requested
   useEffect(() => {
-    const savedTheme = localStorage.getItem("cianna_theme") as "light" | "dark" | null;
-    const initialTheme = savedTheme || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
-    setTheme(initialTheme);
-    document.documentElement.setAttribute("data-theme", initialTheme);
+    setTheme("light");
+    localStorage.setItem("cianna_theme", "light");
+    document.documentElement.setAttribute("data-theme", "light");
+    document.documentElement.classList.remove("dark");
   }, []);
 
-  const toggleTheme = () => {
-    const nextTheme = theme === "light" ? "dark" : "light";
-    setTheme(nextTheme);
-    localStorage.setItem("cianna_theme", nextTheme);
-    document.documentElement.setAttribute("data-theme", nextTheme);
-  };
+  // Close user profile dropdown on click outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+        setIsUserMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   if (!currentUser) return null;
 
-  // Format tab names nicely
+  // Format tab names nicely for display (English)
   const getTabTitle = () => {
     switch (activeTab) {
       case "overview":
-        return "Overview";
-      case "audit":
-        return "System Audit Logs";
-      case "settings":
-        return "System Settings";
-      case "classrooms":
-        return "Classes & Courses";
+        return "Dashboard";
+      case "accounts":
+        return "Accounts";
+      case "payments":
+        return "Payments";
       case "students":
-        return "Student Management";
-      case "teachers":
-        return "Teacher Management";
-      case "billing":
-        return currentUser.role === "admin" ? "Fees & Billing" : "Invoices & Payments";
-      case "attendance":
-        return "Record Attendance";
-      case "grades":
-        return currentUser.role === "teacher" ? "Gradebook Entry" : "Grades Overview";
-      case "timetable":
-        return "Timetable";
+        return "Students";
+      case "classes":
+        return "Classes";
+      case "progress":
+        return "Progress";
+      case "settings":
+        return "Settings";
       default:
         return "Dashboard";
     }
@@ -73,74 +86,91 @@ export const DashboardHeader: React.FC<HeaderProps> = ({
   };
 
   return (
-    <header className="h-[70px] flex items-center justify-between px-4 lg:px-8 mb-8 rounded-xl glass-panel">
-      <div className="flex items-center gap-4">
-        <button 
-          className="block lg:hidden text-slate-800 dark:text-slate-100 hover:opacity-80 transition-opacity cursor-pointer"
-          onClick={() => setSidebarOpen(!sidebarOpen)}
-          aria-label="Open menu"
-        >
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <line x1="3" y1="12" x2="21" y2="12"></line>
-            <line x1="3" y1="6" x2="21" y2="6"></line>
-            <line x1="3" y1="18" x2="21" y2="18"></line>
-          </svg>
-        </button>
-        <h1 className="text-xl lg:text-2xl font-extrabold text-slate-800 dark:text-slate-100">{getTabTitle()}</h1>
+    <header className="h-16 border-b border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 flex items-center justify-between px-4 md:px-8 sticky top-0 z-40 backdrop-blur-md shadow-sm transition-colors duration-200">
+     
+      {/* 2. Middle side - English Search Bar (Hidden on Mobile) */}
+      <div className="flex-1 max-w-sm lg:max-w-md mx-4 hidden md:block">
+        <div className="relative group">
+          <FaSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#256ff1] transition-colors" size={14} />
+          <input
+            type="text"
+            placeholder="Search courses, documents..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60 rounded-xl pl-10 pr-4 py-2 text-sm focus:bg-white dark:focus:bg-slate-900 focus:ring-2 focus:ring-[#256ff1] dark:focus:ring-blue-500 focus:border-transparent transition-all outline-none text-slate-800 dark:text-slate-100 placeholder:text-slate-400 font-medium"
+          />
+        </div>
       </div>
 
-      <div className="flex items-center gap-6">
-        {/* Dynamic Role Switcher for Demonstration/Review */}
-        <div className="hidden md:flex items-center gap-2 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
-          <label htmlFor="role-select" className="text-xs font-semibold text-slate-500 dark:text-slate-400">Test Role:</label>
-          <select 
-            id="role-select"
-            value={currentUser.role}
-            onChange={(e) => switchRole(e.target.value as Role)}
-            className="bg-transparent border-none font-bold text-brand-indigo-600 dark:text-brand-indigo-400 cursor-pointer text-sm outline-none"
-          >
-            <option value="super-admin">Super Admin</option>
-            <option value="admin">Administrator</option>
-            <option value="teacher">Teacher (Herr Weber)</option>
-            <option value="student">Student (Lukas Meier)</option>
-            <option value="parent">Parent (Maria Meier)</option>
-          </select>
-        </div>
+      {/* 3. Right side - Control Panel actions */}
+      <div className="flex items-center gap-2 md:gap-4 ml-auto shrink-0">
 
-        {/* Theme Toggle Button */}
-        <button 
-          onClick={toggleTheme} 
-          className="flex items-center justify-center w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-100 hover:border-slate-350 dark:hover:border-slate-500 transition-all cursor-pointer"
-          title={theme === "light" ? "Dark Mode" : "Light Mode"}
-        >
-          {theme === "light" ? (
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-            </svg>
-          ) : (
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-              <circle cx="12" cy="12" r="5"></circle>
-              <line x1="12" y1="1" x2="12" y2="3"></line>
-              <line x1="12" y1="21" x2="12" y2="23"></line>
-              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-              <line x1="1" y1="12" x2="3" y2="12"></line>
-              <line x1="21" y1="12" x2="23" y2="12"></line>
-              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-            </svg>
-          )}
+        {/* Pulsing Bell Notification Button */}
+        <button className="p-2.5 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl relative border border-transparent hover:border-slate-100 dark:hover:border-slate-700/50 transition-all cursor-pointer group">
+          <FaBell size={16} className="group-hover:text-[#256ff1] dark:group-hover:text-blue-400 transition-colors" />
+          <span className="absolute top-2 right-2 w-2 h-2 bg-[#256ff1] dark:bg-blue-400 rounded-full border-2 border-white dark:border-slate-900 shadow-sm animate-pulse"></span>
         </button>
 
-        {/* User Info Block */}
-        <div className="flex items-center gap-3 pl-6 border-l border-slate-200 dark:border-slate-800">
-          <div className="w-[38px] h-[38px] rounded-full bg-brand-indigo-50 dark:bg-brand-indigo-500/15 text-brand-indigo-600 dark:text-brand-indigo-400 font-bold flex items-center justify-center text-lg border-2 border-slate-200 dark:border-slate-800">
-            {currentUser.name.charAt(0)}
-          </div>
-          <div className="flex flex-col">
-            <span className="text-sm font-semibold text-slate-800 dark:text-slate-100 leading-tight">{currentUser.name}</span>
-            <span className="text-xs text-slate-500 dark:text-slate-400">{getRoleLabel(currentUser.role)}</span>
-          </div>
+        <div className="h-6 w-px bg-slate-200 dark:bg-slate-800 mx-1 hidden sm:block"></div>
+
+        {/* User Profile dropdown panel */}
+        <div className="relative" ref={userMenuRef}>
+          <button 
+            onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+            className="flex items-center gap-2 p-1 hover:bg-slate-50 dark:hover:bg-slate-800/80 cursor-pointer rounded-xl transition-all border border-transparent hover:border-slate-100 dark:hover:border-slate-700/50"
+          >
+            <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950/40 border border-[#256ff1]/20 overflow-hidden shrink-0 flex items-center justify-center font-bold text-sm text-[#256ff1] dark:text-blue-400">
+              {currentUser.name.charAt(0)}
+            </div>
+            <div className="hidden sm:flex flex-col items-start leading-none text-left mr-0.5">
+              <span className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate max-w-[100px]">
+                {currentUser.name}
+              </span>
+              <span className="text-[10px] font-bold text-[#256ff1] dark:text-blue-400 mt-1 tracking-wide uppercase">
+                {getRoleLabel(currentUser.role)}
+              </span>
+            </div>
+            <FaChevronDown size={10} className={`text-slate-400 transition-transform duration-200 ${isUserMenuOpen ? 'rotate-180' : ''}`} />
+          </button>
+
+          {/* Real dropdown popup box */}
+          {isUserMenuOpen && (
+            <div className="absolute right-0 mt-2 w-60 bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 z-50 animate-in fade-in zoom-in-95 duration-200">
+              <div className="px-4 py-3 bg-slate-50 dark:bg-slate-950/40 border-b border-slate-100 dark:border-slate-800 mb-1 rounded-t-2xl">
+                <p className="text-sm font-bold text-slate-900 dark:text-slate-100 leading-tight">
+                  {currentUser.name}
+                </p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 truncate mt-1">
+                  {currentUser.email}
+                </p>
+              </div>
+              
+              <div className="px-2 pb-2 pt-1 space-y-0.5">
+                <button
+                  onClick={() => {
+                    setActiveTab("settings");
+                    setIsUserMenuOpen(false);
+                  }}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:text-[#256ff1] dark:hover:text-blue-400 hover:bg-[#256ff1]/5 dark:hover:bg-blue-500/10 rounded-xl transition-all group cursor-pointer text-left"
+                >
+                  <FaCog size={14} className="text-slate-400 group-hover:text-[#256ff1] dark:group-hover:text-blue-400 transition-colors" />
+                  <span>Settings</span>
+                </button>
+                
+                <button 
+                  onClick={() => {
+                    logout();
+                    setIsUserMenuOpen(false);
+                  }}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-xl transition-all group cursor-pointer text-left"
+                >
+                  <FaSignOutAlt size={14} className="text-slate-400 group-hover:text-red-500 transition-colors" />
+                  <span>Sign Out</span>
+                </button>
+              </div>
+            </div>
+          )}
+
         </div>
       </div>
     </header>

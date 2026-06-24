@@ -45,14 +45,14 @@ export default function DashboardLayout({
       <div className="min-h-screen flex items-center justify-center bg-[#f9fbfc] text-slate-800">
         <div className="flex flex-col items-center gap-4">
           <div className="w-10 h-10 rounded-full border-4 border-slate-200 border-t-[#FF6B4A] animate-spin" />
-          <p className="text-sm font-semibold text-slate-600">Laden...</p>
+          <p className="text-sm font-semibold text-slate-600">Loading...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex bg-[#f9fbfc] transition-colors duration-300">
+    <div className="min-h-screen flex bg-[#f9fbfc] dark:bg-slate-950 text-slate-900 transition-colors duration-300 w-full overflow-x-hidden">
       {/* Sidebar Navigation */}
       <DashboardSidebar 
         activeTab={activeTab} 
@@ -62,17 +62,17 @@ export default function DashboardLayout({
       />
 
       {/* Main Panel Content Area */}
-      <div className="flex-1 flex flex-col min-h-screen lg:pl-64">
-        <div className="p-4 lg:p-8 flex-1 flex flex-col">
-          {/* Header Panel */}
-          <DashboardHeader 
-            activeTab={activeTab} 
-            sidebarOpen={sidebarOpen} 
-            setSidebarOpen={setSidebarOpen} 
-          />
+      <div className="flex-1 flex flex-col min-h-screen lg:pl-64 w-full overflow-x-hidden">
+        {/* Sticky Header */}
+        <DashboardHeader 
+          activeTab={activeTab} 
+          sidebarOpen={sidebarOpen} 
+          setSidebarOpen={setSidebarOpen} 
+        />
 
-          {/* Subpage Contents */}
-          <main className="flex-1 w-full animate-fade-in">
+        {/* Dynamic Page Content with full stretch edge-to-edge layout */}
+        <div className="px-4 pt-4 pb-6 md:px-8 md:pt-6 md:pb-8 flex-1 w-full">
+          <main className="w-full animate-fade-in">
             {children}
           </main>
         </div>
