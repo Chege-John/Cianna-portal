@@ -4,14 +4,14 @@ import React from "react";
 import { useSchool } from "@/context/SchoolContext";
 import dynamic from "next/dynamic";
 
-const Overview = dynamic(() => import("@/components/dashboard/Overview"), { ssr: false });
+const Payments = dynamic(() => import("@/components/dashboard/Payments"), { ssr: false });
 
-export default function ParentPage() {
+export default function ParentPaymentsPage() {
   const { selectedChildId } = useSchool();
 
   return (
     <div className="w-full max-w-full animate-fade-in">
-      <Overview selectedChildId={selectedChildId} />
+      <Payments selectedChildId={selectedChildId} />
     </div>
   );
 }

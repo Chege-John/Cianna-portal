@@ -2,6 +2,14 @@
 
 import React, { useState } from "react";
 import { useSchool } from "@/context/SchoolContext";
+import { 
+  useStudents, 
+  useClassrooms, 
+  useSubjects, 
+  useGrades, 
+  useAttendance, 
+  useSchoolMutations 
+} from "@/hooks/use-school-data";
 import { PageHeader } from "@/components/PageHeader";
 import CustomSelect from "@/components/ui/CustomSelect";
 import StatsCard from "@/components/StatsCard";
@@ -10,7 +18,8 @@ import {
   FaChartLine, 
   FaPlus, 
   FaAward, 
-  FaCalendarAlt
+  FaCalendarAlt,
+  FaSpinner
 } from "react-icons/fa";
 
 interface ProgressProps {
@@ -18,15 +27,18 @@ interface ProgressProps {
 }
 
 export default function Progress({ selectedChildId }: ProgressProps) {
-  const {
-    currentUser,
-    students,
-    classrooms,
-    subjects,
-    grades,
-    attendance,
-    recordGrade
-  } = useSchool();
+  const { currentUser } = useSchool();
+  
+  // Data Fetching
+  const { data: students = [], isLoading: studentsLoading } = useStudents();
+  const { data: classrooms = [], isLoading: classroomsLoading } = useClassrooms();
+  const { data: subjects = [], isLoading: subjectsLoading } = useSubjects();
+  const { data: grades = [], isLoading: gradesLoading } = useGrades();
+  const { data: attendance = [], isLoading: attendanceLoading } = useAttendance();
+  
+  // Mutations
+  const { recordGrade } = useSchoolMutations();
+
 
   // Localized UI and Search States
   // For Admin:
@@ -39,7 +51,17 @@ export default function Progress({ selectedChildId }: ProgressProps) {
   const [gradeSubjectId, setGradeSubjectId] = useState("");
   const [gradeScore, setGradeScore] = useState("");
 
+  const isLoading = studentsLoading || classroomsLoading || subjectsLoading || gradesLoading || attendanceLoading;
+
   if (!currentUser) return null;
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="w-8 h-8 border-4 border-[#256ff1] border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   const role = currentUser.role;
 
@@ -202,11 +224,20 @@ export default function Progress({ selectedChildId }: ProgressProps) {
       e.preventDefault();
       if (!teacherClassId || !gradeStudentId || !gradeSubjectId || !gradeScore) return;
 
-      recordGrade(gradeStudentId, teacherClassId, gradeSubjectId, parseInt(gradeScore));
-      setGradeStudentId("");
-      setGradeScore("");
-      setGradeSubjectId("");
-      alert("Official student evaluation grade recorded successfully!");
+      recordGrade.mutate({
+        studentId: gradeStudentId,
+        classroomId: teacherClassId,
+        subjectId: gradeSubjectId,
+        score: parseInt(gradeScore),
+        gradedBy: currentUser.name
+      }, {
+        onSuccess: () => {
+          setGradeStudentId("");
+          setGradeScore("");
+          setGradeSubjectId("");
+          alert("Official student evaluation grade recorded successfully!");
+        }
+      });
     };
 
     const myClassGrades = grades.filter(g => myClasses.some(c => c.id === g.classroomId));
@@ -296,10 +327,17 @@ export default function Progress({ selectedChildId }: ProgressProps) {
 
               <button 
                 type="submit" 
-                disabled={!teacherClassId || !gradeStudentId || !gradeSubjectId || !gradeScore}
-                className="w-full py-3 bg-[#256ff1] hover:bg-blue-600 text-white font-bold text-sm rounded-xl cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-2 shadow-md shadow-[#256ff1]/10"
+                disabled={recordGrade.isPending || !teacherClassId || !gradeStudentId || !gradeSubjectId || !gradeScore}
+                className="w-full py-3 bg-[#256ff1] hover:bg-blue-600 text-white font-bold text-sm rounded-xl cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-2 shadow-md shadow-[#256ff1]/10 flex items-center justify-center gap-2"
               >
-                Log Grade Entry
+                {recordGrade.isPending ? (
+                  <>
+                    <FaSpinner className="animate-spin" />
+                    Saving Evaluation...
+                  </>
+                ) : (
+                  "Log Grade Entry"
+                )}
               </button>
             </form>
           </div>

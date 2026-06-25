@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
 import {
   getUsers,
@@ -121,6 +122,8 @@ interface SchoolContextType {
   auditLogs: AuditLog[];
   activeTab: string;
   setActiveTab: (tab: string) => void;
+  selectedChildId: string;
+  setSelectedChildId: (id: string) => void;
 
   // Auth actions
   login: (email: string) => boolean;
@@ -164,92 +167,32 @@ function mapDbUserToUser(dbUser: DbUser): User {
 }
 
 export const SchoolProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const pathname = usePathname();
+  const router = useRouter();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
-  const [users, setUsers] = useState<User[]>([]);
-  const [classrooms, setClassrooms] = useState<Classroom[]>([]);
-  const [subjects, setSubjects] = useState<Subject[]>([]);
-  const [students, setStudents] = useState<StudentProfile[]>([]);
-  const [teachers, setTeachers] = useState<TeacherProfile[]>([]);
-  const [grades, setGrades] = useState<Grade[]>([]);
-  const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [payments, setPayments] = useState<PaymentLog[]>([]);
-  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
-  const [activeTab, setActiveTab] = useState("overview");
+  const [selectedChildId, setSelectedChildId] = useState("");
 
-  const loadAllData = useCallback(async () => {
-    const [
-      dbUsers,
-      dbSubjects,
-      dbClassrooms,
-      dbClassroomSubjects,
-      dbStudents,
-      dbTeachers,
-      dbGrades,
-      dbAttendance,
-      dbInvoices,
-      dbPayments,
-      dbAuditLogs,
-    ] = await Promise.all([
-      getUsers(),
-      getSubjects(),
-      getClassrooms(),
-      getClassroomSubjects(),
-      getStudents(),
-      getTeachers(),
-      getGrades(),
-      getAttendance(),
-      getInvoices(),
-      getPayments(),
-      getAuditLogs(),
-    ]);
+  // Derive activeTab from pathname
+  const activeTab = (() => {
+    if (!pathname) return "overview";
+    const segments = pathname.split("/").filter(Boolean);
+    if (segments.length <= 2) return "overview"; // /dashboard/admin -> "overview"
+    return segments[segments.length - 1]; // /dashboard/admin/accounts -> "accounts"
+  })();
 
-    setUsers(dbUsers.map(mapDbUserToUser));
-    setSubjects(dbSubjects);
-    setClassrooms(
-      dbClassrooms.map((c) => ({
-        id: c.id,
-        name: c.name,
-        teacherId: c.teacherId || undefined,
-        subjectIds: dbClassroomSubjects
-          .filter((cs) => cs.classroomId === c.id)
-          .map((cs) => cs.subjectId),
-      }))
-    );
-    setStudents(
-      dbStudents.map((s) => ({
-        id: s.id,
-        name: dbUsers.find((u) => u.id === s.id)?.name || "",
-        email: dbUsers.find((u) => u.id === s.id)?.email || "",
-        classroomId: s.classroomId || "",
-        parentEmail: s.parentEmail || undefined,
-      }))
-    );
-    setTeachers(
-      dbTeachers.map((t) => ({
-        id: t.id,
-        name: dbUsers.find((u) => u.id === t.id)?.name || "",
-        email: dbUsers.find((u) => u.id === t.id)?.email || "",
-        subjectId: t.subjectId || "",
-      }))
-    );
-    setGrades(dbGrades);
-    setAttendance(dbAttendance);
-    setInvoices(
-      dbInvoices.map((inv) => ({
-        ...inv,
-        amount: Number(inv.amount),
-      }))
-    );
-    setPayments(
-      dbPayments.map((p) => ({
-        ...p,
-        amount: Number(p.amount),
-      }))
-    );
-    setAuditLogs(dbAuditLogs);
-  }, []);
+  const setActiveTab = useCallback((tab: string) => {
+    if (!pathname) return;
+    const segments = pathname.split("/").filter(Boolean);
+    if (segments.length >= 2) {
+      const role = segments[1]; // admin, teacher, student, parent, super-admin
+      if (tab === "overview") {
+        router.push(`/dashboard/${role}`);
+      } else {
+        router.push(`/dashboard/${role}/${tab}`);
+      }
+    }
+  }, [pathname, router]);
 
   // Listen for better-auth session changes reactively
   const { data: session, isPending } = authClient.useSession();
@@ -264,87 +207,37 @@ export const SchoolProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         email: session.user.email,
         role: (session.user as { role?: string }).role as Role,
       };
-      setTimeout(() => {
+      // Use requestAnimationFrame or microtask to ensure state updates don't conflict
+      queueMicrotask(() => {
         setCurrentUser(userObj);
-        loadAllData();
-      }, 0);
+        setAuthLoading(false);
+      });
     } else {
-      setTimeout(() => {
+      queueMicrotask(() => {
         setCurrentUser(null);
-      }, 0);
+        setAuthLoading(false);
+      });
     }
-    setTimeout(() => {
-      setAuthLoading(false);
-    }, 0);
-  }, [session, isPending, loadAllData]);
-
-  const login = (_email: string): boolean => {
-    void _email;
-    return true;
-  };
+  }, [session, isPending]);
 
   const logout = async () => {
     await authClient.signOut();
     setCurrentUser(null);
-    setActiveTab("overview");
+    setSelectedChildId("");
+    router.push("/");
   };
 
-  const switchRole = async (role: Role) => {
-    const user = users.find((u) => u.role === role);
-    if (user) {
-      setCurrentUser(user);
-      setActiveTab("overview");
+  // Note: switchRole is mostly for demo/dev purposes in this context
+  const switchRole = (role: Role) => {
+    if (currentUser) {
+      setCurrentUser({ ...currentUser, role });
+      router.push(`/dashboard/${role}`);
     }
   };
 
-  // Admin Actions
-  const addStudent = async (name: string, email: string, classroomId: string, parentEmail?: string) => {
-    await addStudentAction(name, email, classroomId, parentEmail);
-    await loadAllData();
-  };
-
-  const addTeacher = async (name: string, email: string, subjectId: string) => {
-    await addTeacherAction(name, email, subjectId);
-    await loadAllData();
-  };
-
-  const addClassroom = async (name: string, subjectIds: string[]) => {
-    await addClassroomAction(name, subjectIds);
-    await loadAllData();
-  };
-
-  const createInvoice = async (studentId: string, amount: number, description: string) => {
-    await createInvoiceAction(studentId, amount, description);
-    await loadAllData();
-  };
-
-  // Teacher Actions
-  const recordGrade = async (studentId: string, classroomId: string, subjectId: string, score: number) => {
-    await recordGradeAction(studentId, classroomId, subjectId, score, currentUser?.name || "Lehrkraft");
-    await loadAllData();
-  };
-
-  const recordAttendance = async (classroomId: string, date: string, records: { studentId: string; status: AttendanceStatus }[]) => {
-    await recordAttendanceAction(classroomId, date, records);
-    await loadAllData();
-  };
-
-  // Student/Parent Actions
-  const payInvoice = async (invoiceId: string, paymentMethod: string) => {
-    await payInvoiceAction(invoiceId, paymentMethod);
-    await loadAllData();
-  };
-
   const resetDatabase = () => {
-    // Redirect to seed via API or show toast
     fetch("/api/auth/reset-password/send-otp", { method: "POST", body: "{}" }).catch(() => {});
     window.location.reload();
-  };
-
-  const updateUserPassword = (_email: string, _password: string) => {
-    void _email;
-    void _password;
-    // Password update is handled server-side via verify-otp route
   };
 
   return (
@@ -352,36 +245,41 @@ export const SchoolProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       value={{
         currentUser,
         authLoading,
-        users,
-        classrooms,
-        subjects,
-        students,
-        teachers,
-        grades,
-        attendance,
-        invoices,
-        payments,
-        auditLogs,
         activeTab,
         setActiveTab,
-        login,
+        selectedChildId,
+        setSelectedChildId,
         logout,
         switchRole,
-        addStudent,
-        addTeacher,
-        addClassroom,
-        createInvoice,
-        recordGrade,
-        recordAttendance,
-        payInvoice,
         resetDatabase,
-        updateUserPassword,
+        // The following are placeholders to prevent breaking existing components immediately
+        // but they should be replaced by useQuery hooks in components
+        users: [],
+        classrooms: [],
+        subjects: [],
+        students: [],
+        teachers: [],
+        grades: [],
+        attendance: [],
+        invoices: [],
+        payments: [],
+        auditLogs: [],
+        login: () => true,
+        addStudent: () => {},
+        addTeacher: () => {},
+        addClassroom: () => {},
+        createInvoice: () => {},
+        recordGrade: () => {},
+        recordAttendance: () => {},
+        payInvoice: () => {},
+        updateUserPassword: () => {},
       }}
     >
       {children}
     </SchoolContext.Provider>
   );
 };
+
 
 export const useSchool = () => {
   const context = useContext(SchoolContext);

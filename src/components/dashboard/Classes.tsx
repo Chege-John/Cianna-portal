@@ -3,6 +3,13 @@
 import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useSchool, AttendanceStatus } from "@/context/SchoolContext";
+import { 
+  useStudents, 
+  useClassrooms, 
+  useSubjects, 
+  useTeachers, 
+  useSchoolMutations 
+} from "@/hooks/use-school-data";
 import { PageHeader } from "@/components/PageHeader";
 import CustomSelect from "@/components/ui/CustomSelect";
 import StatsCard from "@/components/StatsCard";
@@ -10,19 +17,22 @@ import {
   FaSchool, 
   FaUserCheck, 
   FaCalendarAlt,
-  FaTimes
+  FaTimes,
+  FaSpinner
 } from "react-icons/fa";
 
 export default function Classes() {
-  const {
-    currentUser,
-    students,
-    classrooms,
-    subjects,
-    teachers,
-    addClassroom,
-    recordAttendance
-  } = useSchool();
+  const { currentUser } = useSchool();
+  
+  // Data Fetching
+  const { data: students = [], isLoading: studentsLoading } = useStudents();
+  const { data: classrooms = [], isLoading: classroomsLoading } = useClassrooms();
+  const { data: subjects = [], isLoading: subjectsLoading } = useSubjects();
+  const { data: teachers = [], isLoading: teachersLoading } = useTeachers();
+  
+  // Mutations
+  const { addClassroom, recordAttendance } = useSchoolMutations();
+
 
   // Localized form & selection states
   // For Admin:
@@ -61,7 +71,17 @@ export default function Classes() {
     };
   }, [isClassModalOpen]);
 
+  const isLoading = studentsLoading || classroomsLoading || subjectsLoading || teachersLoading;
+
   if (!currentUser) return null;
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="w-8 h-8 border-4 border-[#256ff1] border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   const role = currentUser.role;
 
@@ -75,11 +95,18 @@ export default function Classes() {
     const handleAddClass = (e: React.FormEvent) => {
       e.preventDefault();
       if (!className || classSubjectIds.length === 0) return;
-      addClassroom(className, classSubjectIds);
-      setClassName("");
-      setClassSubjectIds([]);
-      setIsClassModalOpen(false);
-      alert("Language level classroom successfully created!");
+      
+      addClassroom.mutate({
+        name: className,
+        subjectIds: classSubjectIds
+      }, {
+        onSuccess: () => {
+          setClassName("");
+          setClassSubjectIds([]);
+          setIsClassModalOpen(false);
+          alert("Language level classroom successfully created!");
+        }
+      });
     };
 
     const handleSubjectCheckbox = (id: string) => {
@@ -230,11 +257,19 @@ export default function Classes() {
                   </button>
                   <button 
                     type="submit" 
-                    className="w-2/3 bg-[#256ff1] hover:bg-blue-600 text-white font-bold py-3.5 rounded-xl 
+                    disabled={addClassroom.isPending}
+                    className="w-2/3 bg-[#256ff1] hover:bg-blue-600 disabled:bg-blue-400 text-white font-bold py-3.5 rounded-xl 
                       transition-all duration-300 ease-in-out transform hover:scale-[1.02] active:scale-[0.98]
-                      cursor-pointer shadow-sm hover:shadow-md shadow-[#256ff1]/30 text-center text-sm"
+                      cursor-pointer shadow-sm hover:shadow-md shadow-[#256ff1]/30 text-center text-sm flex items-center justify-center gap-2"
                   >
-                    Create Classroom Level
+                    {addClassroom.isPending ? (
+                      <>
+                        <FaSpinner className="animate-spin" />
+                        Creating...
+                      </>
+                    ) : (
+                      "Create Classroom Level"
+                    )}
                   </button>
                 </div>
               </form>
@@ -279,8 +314,15 @@ export default function Classes() {
         status: attendanceStates[studentId]
       }));
 
-      recordAttendance(selectedClassId, attendanceDate, records);
-      alert("Attendance roster successfully logged for this class session!");
+      recordAttendance.mutate({
+        classroomId: selectedClassId,
+        date: attendanceDate,
+        records
+      }, {
+        onSuccess: () => {
+          alert("Attendance roster successfully logged for this class session!");
+        }
+      });
     };
 
     return (
@@ -389,9 +431,17 @@ export default function Classes() {
                 {classStudents.length > 0 && (
                   <button 
                     type="submit" 
-                    className="px-5 py-2.5 bg-[#256ff1] hover:bg-blue-600 text-white font-bold text-xs rounded-xl cursor-pointer transition-all shadow-md shadow-[#256ff1]/10"
+                    disabled={recordAttendance.isPending}
+                    className="px-5 py-2.5 bg-[#256ff1] hover:bg-blue-600 text-white font-bold text-xs rounded-xl cursor-pointer transition-all shadow-md shadow-[#256ff1]/10 disabled:opacity-70 disabled:cursor-not-allowed flex items-center gap-2"
                   >
-                    Lock Attendance Roster
+                    {recordAttendance.isPending ? (
+                      <>
+                        <FaSpinner className="animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      "Lock Attendance Roster"
+                    )}
                   </button>
                 )}
               </form>

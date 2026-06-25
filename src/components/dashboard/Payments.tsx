@@ -3,19 +3,27 @@
 import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useSchool, Invoice } from "@/context/SchoolContext";
+import { 
+  useInvoices, 
+  usePayments, 
+  useStudents, 
+  useSchoolMutations 
+} from "@/hooks/use-school-data";
 import { PageHeader } from "@/components/PageHeader";
 import StatsCard from "@/components/StatsCard";
 import CustomTable from "@/components/ui/CustomTable";
 import CustomSelect from "@/components/ui/CustomSelect";
 import { InvoiceModal } from "@/components/InvoiceModal";
 import { PaymentModal } from "@/components/PaymentModal";
+import { FiUser, FiDollarSign, FiFileText } from "react-icons/fi";
 import { 
   FaFileInvoiceDollar, 
   FaRegCreditCard, 
   FaCheckCircle, 
   FaEye, 
   FaPlus,
-  FaTimes
+  FaTimes,
+  FaSpinner
 } from "react-icons/fa";
 
 interface PaymentsProps {
@@ -23,14 +31,16 @@ interface PaymentsProps {
 }
 
 export default function Payments({ selectedChildId }: PaymentsProps) {
-  const {
-    currentUser,
-    invoices,
-    payments,
-    students,
-    payInvoice,
-    createInvoice
-  } = useSchool();
+  const { currentUser } = useSchool();
+  
+  // Data Fetching
+  const { data: invoices = [], isLoading: invoicesLoading } = useInvoices();
+  const { data: payments = [], isLoading: paymentsLoading } = usePayments();
+  const { data: students = [], isLoading: studentsLoading } = useStudents();
+  
+  // Mutations
+  const { createInvoice, payInvoice } = useSchoolMutations();
+
 
   // Localized UI and Search States
   const [invoiceSearch, setInvoiceSearch] = useState("");
@@ -84,6 +94,16 @@ export default function Payments({ selectedChildId }: PaymentsProps) {
   // RENDER: SUPER-ADMIN & ADMIN (Financial Ledger Management)
   // -------------------------------------------------------------
   if (role === "super-admin" || role === "admin") {
+    const isLoading = invoicesLoading || paymentsLoading || studentsLoading;
+
+    if (isLoading) {
+      return (
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="w-8 h-8 border-4 border-[#256ff1] border-t-transparent rounded-full animate-spin" />
+        </div>
+      );
+    }
+
     const totalInvoiced = invoices.reduce((sum, inv) => sum + inv.amount, 0);
     const totalPaid = invoices.filter(inv => inv.status === "Paid").reduce((sum, inv) => sum + inv.amount, 0);
     const outstanding = invoices.filter(inv => inv.status === "Unpaid").reduce((sum, inv) => sum + inv.amount, 0);
@@ -91,12 +111,20 @@ export default function Payments({ selectedChildId }: PaymentsProps) {
     const handleCreateInvoice = (e: React.FormEvent) => {
       e.preventDefault();
       if (!invoiceStudentId || !invoiceAmount || !invoiceDesc) return;
-      createInvoice(invoiceStudentId, parseFloat(invoiceAmount), invoiceDesc);
-      setInvoiceStudentId("");
-      setInvoiceAmount("");
-      setInvoiceDesc("");
-      setIsIssueModalOpen(false);
-      alert("Invoice generated and logged successfully!");
+      
+      createInvoice.mutate({
+        studentId: invoiceStudentId,
+        amount: parseFloat(invoiceAmount),
+        description: invoiceDesc
+      }, {
+        onSuccess: () => {
+          setInvoiceStudentId("");
+          setInvoiceAmount("");
+          setInvoiceDesc("");
+          setIsIssueModalOpen(false);
+          alert("Invoice generated and logged successfully!");
+        }
+      });
     };
 
     const filteredInvoices = invoices.filter(inv => 
@@ -221,9 +249,10 @@ export default function Payments({ selectedChildId }: PaymentsProps) {
                           setSelectedInvoice(inv);
                           setInvoiceModalOpen(true);
                         }}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 rounded-lg cursor-pointer transition-colors border border-slate-200/50 dark:border-slate-750"
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold bg-indigo-50 text-indigo-650 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:text-indigo-400 rounded-xl cursor-pointer transition-all duration-300 transform hover:scale-[1.05] active:scale-[0.95] shadow-sm flex items-center justify-center shadow-indigo-500/5 hover:shadow-md"
+                        title="View Invoice Details"
                       >
-                        <FaEye size={12} />
+                        <FaEye size={13} />
                         Details
                       </button>
                     )
@@ -276,10 +305,9 @@ export default function Payments({ selectedChildId }: PaymentsProps) {
             </div>
           </div>
         </div>
-
-        {/* Issue Invoice Modal with premium aesthetics & backdrop blur (rendered via Portal) */}
+              {/* Issue Invoice Modal with clean aesthetics (rendered via Portal) */}
         {isIssueModalOpen && mounted && createPortal(
-          <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-2000 flex items-center justify-center p-4">
             {/* Backdrop with soft blur */}
             <div 
               className="fixed inset-0 bg-black/40 backdrop-blur-sm transition-opacity duration-300 animate-fade-in"
@@ -305,19 +333,24 @@ export default function Payments({ selectedChildId }: PaymentsProps) {
               
               <form onSubmit={handleCreateInvoice} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-semibold text-slate-800 dark:text-slate-200 mb-1.5">Target Student</label>
+                  <label className="block text-sm font-semibold text-slate-800 dark:text-slate-200 mb-1.5">
+                    Target Student
+                  </label>
                   <CustomSelect
                     options={students.map(s => ({ value: s.id, label: `${s.name} (${s.id})` }))}
                     value={invoiceStudentId}
                     onChange={setInvoiceStudentId}
-                    placeholder="Select student..."
+                    placeholder="Choose student..."
                     buttonClassName="!border-2 !border-gray-200 dark:!border-slate-800 !rounded-xl hover:!border-[#256ff1]/60 transition-all !text-slate-800 dark:!text-slate-200 font-semibold"
                     style={{ backgroundColor: "oklch(96.8% .007 247.896)" }}
+                    size="lg"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-slate-800 dark:text-slate-200 mb-1.5">Invoiced Fee (EUR)</label>
+                  <label className="block text-sm font-semibold text-slate-800 dark:text-slate-200 mb-1.5">
+                    Invoiced Fee (EUR)
+                  </label>
                   <input 
                     type="number" 
                     step="0.01"
@@ -325,20 +358,22 @@ export default function Payments({ selectedChildId }: PaymentsProps) {
                     placeholder="e.g. 250.00"
                     value={invoiceAmount}
                     onChange={(e) => setInvoiceAmount(e.target.value)}
-                    className="w-full px-4 py-3 backdrop-blur-md border-2 border-gray-200 dark:border-slate-800 rounded-xl focus:ring-2 focus:ring-[#256ff1] outline-none transition-all text-slate-800 dark:text-slate-200 placeholder-slate-400 bg-white"
+                    className="w-full px-4 py-3 border-2 border-gray-200 dark:border-slate-800 rounded-xl focus:ring-2 focus:ring-[#256ff1] outline-none transition-all text-slate-800 dark:text-slate-200 placeholder-slate-400 bg-white"
                     style={{ backgroundColor: "oklch(96.8% .007 247.896)" }}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-slate-800 dark:text-slate-200 mb-1.5">Billing Reference / Description</label>
+                  <label className="block text-sm font-semibold text-slate-800 dark:text-slate-200 mb-1.5">
+                    Billing Reference / Description
+                  </label>
                   <input 
                     type="text" 
                     required 
                     placeholder="e.g. Deutsch B2 Kursgebühr Juni"
                     value={invoiceDesc}
                     onChange={(e) => setInvoiceDesc(e.target.value)}
-                    className="w-full px-4 py-3 backdrop-blur-md border-2 border-gray-200 dark:border-slate-800 rounded-xl focus:ring-2 focus:ring-[#256ff1] outline-none transition-all text-slate-800 dark:text-slate-200 placeholder-slate-400 bg-white"
+                    className="w-full px-4 py-3 border-2 border-gray-200 dark:border-slate-800 rounded-xl focus:ring-2 focus:ring-[#256ff1] outline-none transition-all text-slate-800 dark:text-slate-200 placeholder-slate-400 bg-white"
                     style={{ backgroundColor: "oklch(96.8% .007 247.896)" }}
                   />
                 </div>
@@ -347,15 +382,25 @@ export default function Payments({ selectedChildId }: PaymentsProps) {
                   <button 
                     type="button"
                     onClick={() => setIsIssueModalOpen(false)}
-                    className="w-1/3 py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 text-sm font-semibold rounded-xl cursor-pointer transition-all duration-200"
+                    className="w-1/3 py-3.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 text-sm font-semibold rounded-xl cursor-pointer transition-all duration-200"
                   >
                     Cancel
                   </button>
                   <button 
                     type="submit" 
-                    className="w-2/3 py-3 bg-[#256ff1] hover:bg-blue-600 text-white text-sm font-bold rounded-xl cursor-pointer transition-all duration-200 shadow-md shadow-[#256ff1]/10 text-center"
+                    disabled={createInvoice.isPending}
+                    className="w-2/3 bg-[#256ff1] hover:bg-blue-600 disabled:bg-blue-400 text-white font-bold py-3.5 rounded-xl 
+                      transition-all duration-300 ease-in-out transform hover:scale-[1.02] active:scale-[0.98]
+                      cursor-pointer shadow-sm hover:shadow-md shadow-[#256ff1]/30 text-center text-sm flex items-center justify-center gap-2"
                   >
-                    Log Invoiced Fee
+                    {createInvoice.isPending ? (
+                      <>
+                        <FaSpinner className="animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      "Issue Invoice"
+                    )}
                   </button>
                 </div>
               </form>
@@ -398,6 +443,23 @@ export default function Payments({ selectedChildId }: PaymentsProps) {
       setSelectedInvoice(inv);
       setPaymentModalOpen(true);
     };
+
+    const handlePaymentSuccess = (invoiceId: string, method: string) => {
+      payInvoice.mutate({
+        invoiceId,
+        paymentMethod: method
+      });
+    };
+
+    const isLoading = invoicesLoading || paymentsLoading;
+
+    if (isLoading) {
+      return (
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="w-8 h-8 border-4 border-[#256ff1] border-t-transparent rounded-full animate-spin" />
+        </div>
+      );
+    }
 
     return (
       <div className="space-y-6 animate-fade-in w-full">
@@ -503,7 +565,7 @@ export default function Payments({ selectedChildId }: PaymentsProps) {
           isOpen={paymentModalOpen} 
           onClose={() => setPaymentModalOpen(false)} 
           invoice={selectedInvoice}
-          onPaymentSuccess={payInvoice}
+          onPaymentSuccess={handlePaymentSuccess}
         />
       </div>
     );

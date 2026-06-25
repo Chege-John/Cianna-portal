@@ -3,21 +3,32 @@
 import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useSchool } from "@/context/SchoolContext";
+import { 
+  useStudents, 
+  useClassrooms, 
+  useGrades, 
+  useAttendance, 
+  useSchoolMutations 
+} from "@/hooks/use-school-data";
 import { PageHeader } from "@/components/PageHeader";
 import StatsCard from "@/components/StatsCard";
 import CustomTable from "@/components/ui/CustomTable";
 import CustomSelect from "@/components/ui/CustomSelect";
-import { FaGraduationCap, FaTimes } from "react-icons/fa";
+import { FaGraduationCap, FaTimes, FaSpinner } from "react-icons/fa";
+import { FiUser, FiMail, FiBookOpen, FiUsers } from "react-icons/fi";
 
 export default function Students() {
-  const {
-    currentUser,
-    students,
-    classrooms,
-    addStudent,
-    grades,
-    attendance
-  } = useSchool();
+  const { currentUser } = useSchool();
+  
+  // Data Fetching
+  const { data: students = [], isLoading: studentsLoading } = useStudents();
+  const { data: classrooms = [], isLoading: classroomsLoading } = useClassrooms();
+  const { data: grades = [], isLoading: gradesLoading } = useGrades();
+  const { data: attendance = [], isLoading: attendanceLoading } = useAttendance();
+  
+  // Mutations
+  const { addStudent } = useSchoolMutations();
+
 
   // Localized UI and form states
   const [studentSearch, setStudentSearch] = useState("");
@@ -55,10 +66,20 @@ export default function Students() {
 
   if (!currentUser) return null;
 
-  const role = currentUser.role;
-
   // Helper resolvers
   const getClassroomName = (id: string) => classrooms.find(c => c.id === id)?.name || "Unassigned";
+
+  const isLoading = studentsLoading || classroomsLoading || gradesLoading || attendanceLoading;
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="w-8 h-8 border-4 border-[#256ff1] border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  const role = currentUser.role;
 
   // -------------------------------------------------------------
   // RENDER: SUPER-ADMIN & ADMIN (Students Register)
@@ -67,13 +88,23 @@ export default function Students() {
     const handleAddStudent = (e: React.FormEvent) => {
       e.preventDefault();
       if (!studentName || !studentEmail || !studentClassId) return;
-      addStudent(studentName, studentEmail, studentClassId, studentParentEmail || undefined);
-      setStudentName("");
-      setStudentEmail("");
-      setStudentClassId("");
-      setStudentParentEmail("");
-      setIsEnrollModalOpen(false);
-      alert("Student profile registered and enrolled successfully!");
+      
+      addStudent.mutate({
+        name: studentName,
+        email: studentEmail,
+        classroomId: studentClassId,
+        parentEmail: studentParentEmail || undefined
+      }, {
+        onSuccess: () => {
+          setStudentName("");
+          setStudentEmail("");
+          setStudentClassId("");
+          setStudentParentEmail("");
+          setIsEnrollModalOpen(false);
+          // Optional: Replace alert with toast if available
+          alert("Student profile registered and enrolled successfully!");
+        }
+      });
     };
 
     const filteredStudents = students.filter(s => 
@@ -180,7 +211,7 @@ export default function Students() {
               <button 
                 type="button"
                 onClick={() => setIsEnrollModalOpen(false)}
-                className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors cursor-pointer"
+                className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
                 aria-label="Close modal"
               >
                 <FaTimes size={16} />
@@ -193,7 +224,9 @@ export default function Students() {
               
               <form onSubmit={handleAddStudent} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-semibold text-slate-800 dark:text-slate-200 mb-1.5">Full Name</label>
+                  <label className="block text-sm font-semibold text-slate-800 dark:text-slate-200 mb-1.5">
+                    Full Name
+                  </label>
                   <input 
                     type="text" 
                     required 
@@ -206,7 +239,9 @@ export default function Students() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-slate-800 dark:text-slate-200 mb-1.5">Email Address</label>
+                  <label className="block text-sm font-semibold text-slate-800 dark:text-slate-200 mb-1.5">
+                    Email Address
+                  </label>
                   <input 
                     type="email" 
                     required 
@@ -219,7 +254,9 @@ export default function Students() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-slate-800 dark:text-slate-200 mb-1.5">Class Level Assignment</label>
+                  <label className="block text-sm font-semibold text-slate-800 dark:text-slate-200 mb-1.5">
+                    Class Level Assignment
+                  </label>
                   <CustomSelect
                     options={classrooms.map(c => ({ value: c.id, label: c.name }))}
                     value={studentClassId}
@@ -232,7 +269,9 @@ export default function Students() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-slate-800 dark:text-slate-200 mb-1.5">Parent/Guardian Email (Optional)</label>
+                  <label className="block text-sm font-semibold text-slate-800 dark:text-slate-200 mb-1.5">
+                    Parent/Guardian Email (Optional)
+                  </label>
                   <input 
                     type="email" 
                     placeholder="parent@mail.de"
@@ -253,11 +292,19 @@ export default function Students() {
                   </button>
                   <button 
                     type="submit" 
-                    className="w-2/3 bg-[#256ff1] hover:bg-blue-600 text-white font-bold py-3.5 rounded-xl 
+                    disabled={addStudent.isPending}
+                    className="w-2/3 bg-[#256ff1] hover:bg-blue-600 disabled:bg-blue-400 text-white font-bold py-3.5 rounded-xl 
                       transition-all duration-300 ease-in-out transform hover:scale-[1.02] active:scale-[0.98]
-                      cursor-pointer shadow-sm hover:shadow-md shadow-[#256ff1]/30 text-center text-sm"
+                      cursor-pointer shadow-sm hover:shadow-md shadow-[#256ff1]/30 text-center text-sm flex items-center justify-center gap-2"
                   >
-                    Register & Enroll Student
+                    {addStudent.isPending ? (
+                      <>
+                        <FaSpinner className="animate-spin" />
+                        Processing...
+                      </>
+                    ) : (
+                      "Enroll Student"
+                    )}
                   </button>
                 </div>
               </form>

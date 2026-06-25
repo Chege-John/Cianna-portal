@@ -205,3 +205,40 @@ export async function payInvoiceAction(invoiceId: string, paymentMethod: string)
     date: new Date().toISOString().split("T")[0],
   });
 }
+
+export async function updateUserAction(id: string, name: string, email: string, role: "super-admin" | "admin" | "teacher" | "student" | "parent") {
+  await db
+    .update(schema.user)
+    .set({ name, email, role, updatedAt: new Date() })
+    .where(eq(schema.user.id, id));
+
+  await db.insert(schema.auditLog).values({
+    id: `l-${Date.now()}`,
+    timestamp: new Date().toISOString(),
+    actor: "System",
+    role: "super-admin",
+    action: `Systemaccount aktualisiert: ${name} (${email}, Rolle: ${role})`,
+  });
+}
+
+export async function deleteUserAction(id: string) {
+  const existingUser = await db
+    .select()
+    .from(schema.user)
+    .where(eq(schema.user.id, id))
+    .limit(1);
+
+  if (existingUser.length === 0) return;
+  const u = existingUser[0];
+
+  await db.delete(schema.user).where(eq(schema.user.id, id));
+
+  await db.insert(schema.auditLog).values({
+    id: `l-${Date.now()}`,
+    timestamp: new Date().toISOString(),
+    actor: "System",
+    role: "super-admin",
+    action: `Systemaccount gelöscht: ${u.name} (${u.email}, Rolle: ${u.role})`,
+  });
+}
+

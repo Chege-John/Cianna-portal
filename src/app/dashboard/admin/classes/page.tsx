@@ -4,9 +4,9 @@ import React from "react";
 import { useSchool } from "@/context/SchoolContext";
 import dynamic from "next/dynamic";
 
-const Overview = dynamic(() => import("@/components/dashboard/Overview"), { ssr: false });
+const Classes = dynamic(() => import("@/components/dashboard/Classes"), { ssr: false });
 
-export default function AdminPage() {
+export default function AdminClassesPage() {
   const { currentUser } = useSchool();
 
   if (!currentUser || currentUser.role !== "admin") {
@@ -22,7 +22,7 @@ export default function AdminPage() {
 
   return (
     <div className="w-full max-w-full animate-fade-in">
-      <Overview />
+      <Classes />
     </div>
   );
 }

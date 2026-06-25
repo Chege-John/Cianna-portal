@@ -98,14 +98,10 @@ export async function getWeeklyReservations(
   return { data, total };
 }
 
-export async function getPropertyTypes(
+export async function getClassroomDistribution(
   _role: string,
-  _userId: string,
-  _managedCounties: string[] = []
+  _userId: string
 ) {
-  void _role;
-  void _userId;
-  void _managedCounties;
   const rows = await db
     .select({
       name: schema.classroom.name,
@@ -144,14 +140,10 @@ export async function getPaymentStatus(
   }));
 }
 
-export async function getTopApartments(
+export async function getTopContributingStudents(
   _role: string,
-  _userId: string,
-  _managedCounties: string[] = []
+  _userId: string
 ) {
-  void _role;
-  void _userId;
-  void _managedCounties;
   const rows = await db
     .select({
       name: schema.user.name,

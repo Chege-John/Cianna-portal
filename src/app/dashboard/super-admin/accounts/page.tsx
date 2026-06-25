@@ -4,25 +4,25 @@ import React from "react";
 import { useSchool } from "@/context/SchoolContext";
 import dynamic from "next/dynamic";
 
-const Overview = dynamic(() => import("@/components/dashboard/Overview"), { ssr: false });
+const Accounts = dynamic(() => import("@/components/dashboard/Accounts"), { ssr: false });
 
-export default function AdminPage() {
+export default function SuperAdminAccountsPage() {
   const { currentUser } = useSchool();
 
-  if (!currentUser || currentUser.role !== "admin") {
+  if (!currentUser || currentUser.role !== "super-admin") {
     return (
       <div className="p-6 bg-rose-50 text-rose-600 rounded-xl border border-rose-100 max-w-2xl mx-auto mt-10">
         <h2 className="font-extrabold text-lg flex items-center gap-2">
           <span>Access Denied</span>
         </h2>
-        <p className="text-sm mt-1">This dashboard is only accessible to administrative team members.</p>
+        <p className="text-sm mt-1">This dashboard is only accessible to super-administrators.</p>
       </div>
     );
   }
 
   return (
     <div className="w-full max-w-full animate-fade-in">
-      <Overview />
+      <Accounts />
     </div>
   );
 }

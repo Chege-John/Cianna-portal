@@ -1,7 +1,14 @@
-"use client";
-
 import React, { useState } from "react";
 import { useSchool, Invoice } from "@/context/SchoolContext";
+import { 
+  useStudents, 
+  useTeachers, 
+  useClassrooms, 
+  useSubjects, 
+  useInvoices, 
+  useGrades, 
+  useAttendance 
+} from "@/hooks/use-school-data";
 import { PageHeader } from "@/components/PageHeader";
 import StatsCard from "@/components/StatsCard";
 import AdminChartsSection from "@/components/AdminChartsSection";
@@ -11,7 +18,7 @@ import {
   FaEye, 
   FaChalkboardTeacher, 
   FaGraduationCap, 
-  FaClock
+  FaClock 
 } from "react-icons/fa";
 
 interface OverviewProps {
@@ -19,28 +26,45 @@ interface OverviewProps {
 }
 
 export default function Overview({ selectedChildId }: OverviewProps) {
-  const {
-    currentUser,
-    students,
-    teachers,
-    classrooms,
-    subjects,
-    invoices,
-    grades,
-    attendance,
-    resetDatabase
-  } = useSchool();
+  const { currentUser, resetDatabase, setActiveTab } = useSchool();
+  
+  // Fetching data via granular React Query hooks
+  const { data: students = [], isLoading: studentsLoading } = useStudents();
+  const { data: teachers = [], isLoading: teachersLoading } = useTeachers();
+  const { data: classrooms = [], isLoading: classroomsLoading } = useClassrooms();
+  const { data: subjects = [], isLoading: subjectsLoading } = useSubjects();
+  const { data: invoices = [], isLoading: invoicesLoading } = useInvoices();
+  const { data: grades = [], isLoading: gradesLoading } = useGrades();
+  const { data: attendance = [], isLoading: attendanceLoading } = useAttendance();
 
   // Invoice Details Modal state for Admin
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [invoiceModalOpen, setInvoiceModalOpen] = useState(false);
 
+  const isLoading = 
+    studentsLoading || 
+    teachersLoading || 
+    classroomsLoading || 
+    subjectsLoading || 
+    invoicesLoading || 
+    gradesLoading || 
+    attendanceLoading;
+
   if (!currentUser) return null;
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="w-8 h-8 border-4 border-[#256ff1] border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   const role = currentUser.role;
 
   // Helper resolvers
   const getSubjectName = (id: string) => subjects.find(s => s.id === id)?.name || "No Subject";
+
   const getStudentName = (id: string) => students.find(s => s.id === id)?.name || "Unknown Student";
 
   // Global Admin calculation metrics
@@ -108,7 +132,7 @@ export default function Overview({ selectedChildId }: OverviewProps) {
         </div>
 
         {/* Dynamic Interactive Charts */}
-        <AdminChartsSection currentUser={currentUser} />
+        <AdminChartsSection currentUser={currentUser} setActiveTab={setActiveTab} />
 
         {/* Outstanding Invoices List (Only Admin View) */}
         {role === "admin" && (

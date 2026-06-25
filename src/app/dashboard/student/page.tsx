@@ -4,14 +4,10 @@ import React from "react";
 import { useSchool } from "@/context/SchoolContext";
 import dynamic from "next/dynamic";
 
-// Dynamic imports to optimize initial loads and prevent rendering bottlenecks
 const Overview = dynamic(() => import("@/components/dashboard/Overview"), { ssr: false });
-const Classes = dynamic(() => import("@/components/dashboard/Classes"), { ssr: false });
-const Progress = dynamic(() => import("@/components/dashboard/Progress"), { ssr: false });
-const Payments = dynamic(() => import("@/components/dashboard/Payments"), { ssr: false });
 
 export default function StudentPage() {
-  const { currentUser, activeTab } = useSchool();
+  const { currentUser } = useSchool();
 
   if (!currentUser || currentUser.role !== "student") {
     return (
@@ -25,11 +21,8 @@ export default function StudentPage() {
   }
 
   return (
-    <div className="w-full max-w-full">
-      {activeTab === "overview" && <Overview />}
-      {activeTab === "classes" && <Classes />}
-      {activeTab === "progress" && <Progress />}
-      {activeTab === "payments" && <Payments />}
+    <div className="w-full max-w-full animate-fade-in">
+      <Overview />
     </div>
   );
 }
