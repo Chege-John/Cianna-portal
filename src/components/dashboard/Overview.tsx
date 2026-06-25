@@ -1,24 +1,17 @@
 "use client";
 
 import React, { useState } from "react";
-import { useSchool } from "@/context/SchoolContext";
+import { useSchool, Invoice } from "@/context/SchoolContext";
 import { PageHeader } from "@/components/PageHeader";
 import StatsCard from "@/components/StatsCard";
 import AdminChartsSection from "@/components/AdminChartsSection";
 import { InvoiceModal } from "@/components/InvoiceModal";
 import { 
-  FaHome, 
-  FaUsers, 
-  FaBriefcase, 
-  FaDollarSign, 
   FaRedo, 
   FaEye, 
   FaChalkboardTeacher, 
   FaGraduationCap, 
-  FaClock, 
-  FaChild, 
-  FaCheckCircle, 
-  FaCalendar 
+  FaClock
 } from "react-icons/fa";
 
 interface OverviewProps {
@@ -28,7 +21,6 @@ interface OverviewProps {
 export default function Overview({ selectedChildId }: OverviewProps) {
   const {
     currentUser,
-    users,
     students,
     teachers,
     classrooms,
@@ -40,7 +32,7 @@ export default function Overview({ selectedChildId }: OverviewProps) {
   } = useSchool();
 
   // Invoice Details Modal state for Admin
-  const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
+  const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [invoiceModalOpen, setInvoiceModalOpen] = useState(false);
 
   if (!currentUser) return null;
@@ -48,12 +40,10 @@ export default function Overview({ selectedChildId }: OverviewProps) {
   const role = currentUser.role;
 
   // Helper resolvers
-  const getClassroomName = (id: string) => classrooms.find(c => c.id === id)?.name || "Unassigned";
   const getSubjectName = (id: string) => subjects.find(s => s.id === id)?.name || "No Subject";
   const getStudentName = (id: string) => students.find(s => s.id === id)?.name || "Unknown Student";
 
   // Global Admin calculation metrics
-  const totalInvoiced = invoices.reduce((sum, inv) => sum + inv.amount, 0);
   const totalPaid = invoices.filter(inv => inv.status === "Paid").reduce((sum, inv) => sum + inv.amount, 0);
   const outstanding = invoices.filter(inv => inv.status === "Unpaid").reduce((sum, inv) => sum + inv.amount, 0);
 
@@ -76,7 +66,7 @@ export default function Overview({ selectedChildId }: OverviewProps) {
                   text: "Reset Sandbox DB",
                   icon: <FaRedo size={12} />,
                   onClick: () => {
-                    if (confirm("Reset Mock Database? This will erase all student profiles, invoices, grades, and logs to initial defaults.")) {
+                    if (confirm("Reset Sandbox Database? This will erase all student profiles, invoices, grades, and logs to initial defaults.")) {
                       resetDatabase();
                     }
                   }
@@ -350,7 +340,7 @@ export default function Overview({ selectedChildId }: OverviewProps) {
         <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
           <div className="flex items-center gap-2 mb-4 text-[#256ff1]">
             <FaClock size={16} />
-            <h2 className="text-base font-extrabold text-slate-950 dark:text-slate-100">Today's Class Schedule</h2>
+            <h2 className="text-base font-extrabold text-slate-950 dark:text-slate-100">Today&apos;s Class Schedule</h2>
           </div>
           
           {classroom ? (
@@ -433,7 +423,7 @@ export default function Overview({ selectedChildId }: OverviewProps) {
             <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
               <h3 className="text-base font-extrabold text-slate-950 dark:text-slate-100 mb-2">Academic & Enrollment Status Overview</h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-medium">
-                {selectedChild?.name} is actively participating in instructional sessions for language level <span className="font-bold text-slate-700 dark:text-slate-300">{childClassroom?.name || "Unassigned"}</span>. As their registered legal representative, you are fully authorized to track grades, evaluate progress logs, and resolve pending tuition bills online via credit card or direct bank transfer under the "Payments" tab.
+                {selectedChild?.name} is actively participating in instructional sessions for language level <span className="font-bold text-slate-700 dark:text-slate-300">{childClassroom?.name || "Unassigned"}</span>. As their registered legal representative, you are fully authorized to track grades, evaluate progress logs, and resolve pending tuition bills online via credit card or direct bank transfer under the &quot;Payments&quot; tab.
               </p>
             </div>
           </>

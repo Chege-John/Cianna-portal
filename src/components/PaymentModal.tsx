@@ -126,7 +126,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                 <div className="p-4 rounded-xl bg-brand-indigo-50/50 dark:bg-brand-indigo-500/5 border border-brand-indigo-150/30 dark:border-brand-indigo-500/10 text-sm">
                   <p className="font-bold text-slate-800 dark:text-slate-100">Simulated Bank Transfer</p>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
-                    Please execute a bank transfer to our German IBAN account. The system will record the payment instantly after clicking "Confirm Simulation".
+                    Please execute a bank transfer to our German IBAN account. The system will record the payment instantly after clicking &apos;Confirm Simulation&apos;.
                   </p>
                   <div className="mt-3 space-y-1 font-mono text-xs text-slate-600 dark:text-slate-350">
                     <p>Recipient: Cianna GmbH</p>

@@ -25,7 +25,7 @@ export function ChartSkeleton({ height = "350px" }: ChartSkeletonProps) {
             key={index}
             className="flex-1 bg-gray-200 rounded-t-lg transition-all duration-300"
             style={{
-              height: `${Math.floor(Math.random() * 60) + 20}%`,
+              height: `${((index * 7 + 13) % 61) + 20}%`,
               opacity: (12 - index) / 12 + 0.1,
             }}
           />

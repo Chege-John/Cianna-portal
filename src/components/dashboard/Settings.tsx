@@ -3,6 +3,7 @@
 import React from "react";
 import { useSchool } from "@/context/SchoolContext";
 import { PageHeader } from "@/components/PageHeader";
+import CustomSelect from "@/components/ui/CustomSelect";
 import { FaCog } from "react-icons/fa";
 
 export default function Settings() {
@@ -25,30 +26,36 @@ export default function Settings() {
         
         <div className="space-y-4">
           <div>
-            <label className="text-xs font-bold text-slate-400 dark:text-slate-500 block mb-1">Institute Name</label>
+            <label className="block text-sm font-semibold text-slate-800 dark:text-slate-200 mb-1.5">Institute Name</label>
             <input 
               type="text" 
               defaultValue="Cianna German School" 
               disabled
-              className="w-full px-3.5 py-2 text-sm bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-750 rounded-xl outline-none font-semibold text-slate-500 dark:text-slate-400" 
+              className="w-full px-4 py-3 backdrop-blur-md border-2 border-gray-200 dark:border-slate-800 rounded-xl outline-none font-semibold text-slate-500 dark:text-slate-400 bg-gray-50 dark:bg-slate-850 opacity-80" 
             />
           </div>
           
           <div>
-            <label className="text-xs font-bold text-slate-400 dark:text-slate-500 block mb-1">Default Currency</label>
-            <select 
+            <label className="block text-sm font-semibold text-slate-800 dark:text-slate-200 mb-1.5">Default Currency</label>
+            <CustomSelect
               disabled
-              className="w-full px-3.5 py-2 text-sm bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-750 rounded-xl outline-none font-bold text-slate-500 dark:text-slate-400 cursor-pointer"
-            >
-              <option>Euro (€)</option>
-              <option>US Dollar ($)</option>
-            </select>
+              options={[
+                { value: "EUR", label: "Euro (€)" },
+                { value: "USD", label: "US Dollar ($)" }
+              ]}
+              value="EUR"
+              onChange={() => {}}
+              buttonClassName="!border-2 !border-gray-200 dark:!border-slate-800 !rounded-xl hover:!border-[#256ff1]/60 transition-all !text-slate-800 dark:!text-slate-200 font-semibold"
+              style={{ backgroundColor: "oklch(96.8% .007 247.896)" }}
+              size="lg"
+            />
           </div>
           
           <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex flex-col gap-2">
-            <span className="text-xs font-extrabold text-slate-400 dark:text-slate-500 block">Database Status</span>
-            <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold">
-              Mock database stored locally on your web browser cache storage (localStorage).
+            <span className="text-xs font-extrabold text-[#256ff1] uppercase tracking-wider block">Database Status</span>
+            <p className="text-xs text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse inline-block" />
+              Live PostgreSQL database connected via Drizzle ORM.
             </p>
           </div>
         </div>

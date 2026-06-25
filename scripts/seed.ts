@@ -1,7 +1,7 @@
-import "dotenv/config"; // Load environment variables from .env or .env.local
+import "dotenv/config";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
-import { scryptSync, randomBytes } from "node:crypto";
+import { hashPassword } from "@better-auth/utils/password";
 import * as schema from "../src/lib/db/schema";
 
 const databaseUrl = process.env.DATABASE_URL;
@@ -13,13 +13,6 @@ if (!databaseUrl) {
 
 const sql = neon(databaseUrl);
 const db = drizzle(sql, { schema });
-
-// Helper to hash passwords using Better Auth's expected scrypt format (salt:key)
-function hashPassword(password: string): string {
-  const salt = randomBytes(16).toString("hex");
-  const key = scryptSync(password, salt, 64).toString("hex");
-  return `${salt}:${key}`;
-}
 
 // ==========================================
 // SAMPLE DATASETS MAPPED FROM SCHOOLCONTEXT
@@ -121,18 +114,20 @@ async function main() {
     await db.insert(schema.user).values(initialUsers);
 
     console.log("🔑 Seeding Better Auth Accounts...");
-    const accounts = initialUsers.map((user) => {
-      const pwd = user.email === "johnirunguchege2000@gmail.com" ? "12345678" : "changeme";
-      return {
-        id: `acc-${user.id}`,
-        accountId: user.email,
-        providerId: "credential",
-        userId: user.id,
-        password: hashPassword(pwd),
-        createdAt: new Date(),
-        updatedAt: new Date()
-      };
-    });
+    const accounts = await Promise.all(
+      initialUsers.map(async (user) => {
+        const pwd = user.email === "johnirunguchege2000@gmail.com" ? "12345678" : "changeme";
+        return {
+          id: `acc-${user.id}`,
+          accountId: user.email,
+          providerId: "credential",
+          userId: user.id,
+          password: await hashPassword(pwd),
+          createdAt: new Date(),
+          updatedAt: new Date()
+        };
+      })
+    );
     await db.insert(schema.account).values(accounts);
 
     // 3. Insert Subjects

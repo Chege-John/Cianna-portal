@@ -3,16 +3,14 @@
 import React, { useState } from "react";
 import { useSchool } from "@/context/SchoolContext";
 import { PageHeader } from "@/components/PageHeader";
+import CustomSelect from "@/components/ui/CustomSelect";
 import StatsCard from "@/components/StatsCard";
 import CustomTable from "@/components/ui/CustomTable";
 import { 
   FaChartLine, 
   FaPlus, 
   FaAward, 
-  FaCalendarAlt, 
-  FaRegCheckCircle, 
-  FaShieldAlt, 
-  FaClock 
+  FaCalendarAlt
 } from "react-icons/fa";
 
 interface ProgressProps {
@@ -229,58 +227,60 @@ export default function Progress({ selectedChildId }: ProgressProps) {
             
             <form onSubmit={handleSaveGrade} className="space-y-4">
               <div>
-                <label className="text-xs font-bold text-slate-400 dark:text-slate-500 block mb-1">Select Class</label>
-                <select 
-                  required 
+                <label className="block text-sm font-semibold text-slate-800 dark:text-slate-200 mb-1.5">
+                  Select Class
+                </label>
+                <CustomSelect
+                  options={myClasses.map(c => ({ value: c.id, label: c.name }))}
                   value={teacherClassId}
-                  onChange={(e) => {
-                    setTeacherClassId(e.target.value);
+                  onChange={(val) => {
+                    setTeacherClassId(val);
                     setGradeStudentId("");
                     setGradeSubjectId("");
                   }}
-                  className="w-full px-3.5 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-750 bg-white dark:bg-slate-850 text-slate-900 dark:text-slate-100 outline-none focus:border-[#256ff1] focus:ring-1 focus:ring-[#256ff1]/10 transition-all font-bold text-slate-700 dark:text-slate-300 cursor-pointer"
-                >
-                  <option value="">Choose class...</option>
-                  {myClasses.map(c => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-                </select>
+                  placeholder="Choose class..."
+                  buttonClassName="!border-2 !border-gray-200 dark:!border-slate-800 !rounded-xl hover:!border-[#256ff1]/60 transition-all !text-slate-800 dark:!text-slate-200 font-semibold"
+                  style={{ backgroundColor: "oklch(96.8% .007 247.896)" }}
+                  size="lg"
+                />
               </div>
               
               <div>
-                <label className="text-xs font-bold text-slate-400 dark:text-slate-500 block mb-1">Select Student</label>
-                <select 
-                  required 
+                <label className="block text-sm font-semibold text-slate-800 dark:text-slate-200 mb-1.5">
+                  Select Student
+                </label>
+                <CustomSelect
                   disabled={!teacherClassId}
+                  options={classStudents.map(s => ({ value: s.id, label: s.name }))}
                   value={gradeStudentId}
-                  onChange={(e) => setGradeStudentId(e.target.value)}
-                  className="w-full px-3.5 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-750 bg-white dark:bg-slate-850 text-slate-900 dark:text-slate-100 outline-none focus:border-[#256ff1] focus:ring-1 focus:ring-[#256ff1]/10 transition-all font-bold text-slate-700 dark:text-slate-300 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <option value="">Choose student...</option>
-                  {classStudents.map(s => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
-                  ))}
-                </select>
+                  onChange={setGradeStudentId}
+                  placeholder={teacherClassId ? "Choose student..." : "Select class first..."}
+                  buttonClassName="!border-2 !border-gray-200 dark:!border-slate-800 !rounded-xl hover:!border-[#256ff1]/60 transition-all !text-slate-800 dark:!text-slate-200 font-semibold"
+                  style={{ backgroundColor: "oklch(96.8% .007 247.896)" }}
+                  size="lg"
+                />
               </div>
 
               <div>
-                <label className="text-xs font-bold text-slate-400 dark:text-slate-500 block mb-1">Assessed Course Module</label>
-                <select 
-                  required 
+                <label className="block text-sm font-semibold text-slate-800 dark:text-slate-200 mb-1.5">
+                  Assessed Course Module
+                </label>
+                <CustomSelect
                   disabled={!teacherClassId}
+                  options={(activeClassroom?.subjectIds || []).map(subId => ({ value: subId, label: getSubjectName(subId) }))}
                   value={gradeSubjectId}
-                  onChange={(e) => setGradeSubjectId(e.target.value)}
-                  className="w-full px-3.5 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-750 bg-white dark:bg-slate-850 text-slate-900 dark:text-slate-100 outline-none focus:border-[#256ff1] focus:ring-1 focus:ring-[#256ff1]/10 transition-all font-bold text-slate-700 dark:text-slate-300 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <option value="">Choose module...</option>
-                  {activeClassroom?.subjectIds.map(subId => (
-                    <option key={subId} value={subId}>{getSubjectName(subId)}</option>
-                  ))}
-                </select>
+                  onChange={setGradeSubjectId}
+                  placeholder={teacherClassId ? "Choose module..." : "Select class first..."}
+                  buttonClassName="!border-2 !border-gray-200 dark:!border-slate-800 !rounded-xl hover:!border-[#256ff1]/60 transition-all !text-slate-800 dark:!text-slate-200 font-semibold"
+                  style={{ backgroundColor: "oklch(96.8% .007 247.896)" }}
+                  size="lg"
+                />
               </div>
 
               <div>
-                <label className="text-xs font-bold text-slate-400 dark:text-slate-500 block mb-1">Evaluation Score (0 - 100%)</label>
+                <label className="block text-sm font-semibold text-slate-800 dark:text-slate-200 mb-1.5">
+                  Evaluation Score (0 - 100%)
+                </label>
                 <input 
                   type="number" 
                   min="0"
@@ -289,14 +289,15 @@ export default function Progress({ selectedChildId }: ProgressProps) {
                   placeholder="e.g. 85"
                   value={gradeScore}
                   onChange={(e) => setGradeScore(e.target.value)}
-                  className="w-full px-3.5 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-750 bg-white dark:bg-slate-850 text-slate-900 dark:text-slate-100 outline-none focus:border-[#256ff1] focus:ring-1 focus:ring-[#256ff1]/10 transition-all font-medium"
+                  className="w-full px-4 py-3 backdrop-blur-md border-2 border-gray-200 dark:border-slate-800 rounded-xl focus:ring-2 focus:ring-[#256ff1] outline-none transition-all text-slate-800 dark:text-slate-200 placeholder-slate-400 bg-white"
+                  style={{ backgroundColor: "oklch(96.8% .007 247.896)" }}
                 />
               </div>
 
               <button 
                 type="submit" 
                 disabled={!teacherClassId || !gradeStudentId || !gradeSubjectId || !gradeScore}
-                className="w-full py-2.5 bg-[#256ff1] hover:bg-blue-600 text-white font-bold text-xs rounded-xl cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-2 shadow-md shadow-[#256ff1]/10"
+                className="w-full py-3 bg-[#256ff1] hover:bg-blue-600 text-white font-bold text-sm rounded-xl cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-2 shadow-md shadow-[#256ff1]/10"
               >
                 Log Grade Entry
               </button>

@@ -89,7 +89,7 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({ children }) => {
 
 export default function ForgotPassword() {
   const router = useRouter();
-  const { updateUserPassword, users, currentUser } = useSchool();
+  const { currentUser } = useSchool();
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -135,17 +135,6 @@ export default function ForgotPassword() {
       return;
     }
 
-    // Client-side quick validation to give helpful instant feedback
-    const matchedLocal = users.some(u => u.email.toLowerCase() === cleanEmail.toLowerCase());
-    if (!matchedLocal) {
-      toast.error("This email address is not registered in our records.", {
-        position: "bottom-left",
-        duration: 4000,
-        ...toastStyles.error,
-      });
-      return;
-    }
-
     setIsLoading(true);
     try {
       const response = await fetch("/api/auth/reset-password/send-otp", {
@@ -168,8 +157,9 @@ export default function ForgotPassword() {
 
       setStep("verify");
       setResendCooldown(60); // 60-second throttling cooldown
-    } catch (error: any) {
-      toast.error(error.message || "An unexpected error occurred. Please try again.", {
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "An unexpected error occurred. Please try again.";
+      toast.error(message, {
         position: "bottom-left",
         duration: 4000,
         ...toastStyles.error,
@@ -229,18 +219,16 @@ export default function ForgotPassword() {
         throw new Error(data.error || "Verification failed.");
       }
 
-      // Sync updated password state directly to client context and local storage
-      updateUserPassword(cleanEmail, newPassword);
-
-      toast.success("Password reset successfully synchronized!", {
+      toast.success("Password reset successfully!", {
         position: "bottom-left",
         duration: 4000,
         ...toastStyles.success,
       });
 
       setStep("success");
-    } catch (error: any) {
-      toast.error(error.message || "Verification failed. Please check the code.", {
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Verification failed. Please check the code.";
+      toast.error(message, {
         position: "bottom-left",
         duration: 4000,
         ...toastStyles.error,
@@ -273,8 +261,9 @@ export default function ForgotPassword() {
       });
 
       setResendCooldown(60);
-    } catch (error: any) {
-      toast.error(error.message || "Could not resend code. Please try again.", {
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Could not resend code. Please try again.";
+      toast.error(message, {
         position: "bottom-left",
         duration: 4000,
         ...toastStyles.error,

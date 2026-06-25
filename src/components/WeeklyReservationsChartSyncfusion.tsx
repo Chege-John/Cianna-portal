@@ -17,6 +17,11 @@ interface WeeklyChartProps {
   total: number;
 }
 
+interface TooltipArgs {
+  x?: string | number;
+  y?: number;
+}
+
 export default function WeeklyReservationsChartSyncfusion({ data, total }: WeeklyChartProps) {
   const chartColors = {
     axisColor: "#6b7280",
@@ -30,7 +35,7 @@ export default function WeeklyReservationsChartSyncfusion({ data, total }: Weekl
     tooltipValue: "#111827",
   };
 
-  const tooltipTemplate = (args: any) => {
+  const tooltipTemplate = (args: TooltipArgs) => {
     return (
       <div
         style={{
@@ -124,7 +129,7 @@ export default function WeeklyReservationsChartSyncfusion({ data, total }: Weekl
         tooltip={{
           enable: true,
           shared: false,
-          template: tooltipTemplate as any,
+          template: tooltipTemplate as unknown as string,
         }}
       >
         <Inject services={[ColumnSeries, Category, Tooltip, DataLabel]} />

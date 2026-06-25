@@ -5,14 +5,9 @@ import { useSchool, Role } from "@/context/SchoolContext";
 import { 
   FaSearch, 
   FaBell, 
-  FaQuestionCircle, 
   FaCog, 
   FaSignOutAlt, 
-  FaChevronDown, 
-  FaSun, 
-  FaMoon, 
-  FaBars,
-  FaUser
+  FaChevronDown
 } from "react-icons/fa";
 
 interface HeaderProps {
@@ -22,19 +17,20 @@ interface HeaderProps {
 }
 
 export const DashboardHeader: React.FC<HeaderProps> = ({
-  activeTab,
-  sidebarOpen,
-  setSidebarOpen
+  activeTab: _activeTab,
+  sidebarOpen: _sidebarOpen,
+  setSidebarOpen: _setSidebarOpen
 }) => {
-  const { currentUser, switchRole, logout, setActiveTab } = useSchool();
-  const [theme, setTheme] = useState<"light" | "dark">("light");
+  const { currentUser, logout, setActiveTab } = useSchool();
+  void _activeTab;
+  void _sidebarOpen;
+  void _setSidebarOpen;
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const userMenuRef = useRef<HTMLDivElement>(null);
 
   // Force Light Theme unconditionally as requested
   useEffect(() => {
-    setTheme("light");
     localStorage.setItem("cianna_theme", "light");
     document.documentElement.setAttribute("data-theme", "light");
     document.documentElement.classList.remove("dark");
@@ -52,28 +48,6 @@ export const DashboardHeader: React.FC<HeaderProps> = ({
   }, []);
 
   if (!currentUser) return null;
-
-  // Format tab names nicely for display (English)
-  const getTabTitle = () => {
-    switch (activeTab) {
-      case "overview":
-        return "Dashboard";
-      case "accounts":
-        return "Accounts";
-      case "payments":
-        return "Payments";
-      case "students":
-        return "Students";
-      case "classes":
-        return "Classes";
-      case "progress":
-        return "Progress";
-      case "settings":
-        return "Settings";
-      default:
-        return "Dashboard";
-    }
-  };
 
   const getRoleLabel = (r: Role) => {
     switch (r) {

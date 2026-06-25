@@ -9,7 +9,6 @@ import {
   ResponsiveContainer,
   Area,
   AreaChart,
-  TooltipProps,
 } from "recharts";
 
 import { LineChartData } from "@/server-actions/dashboard";
@@ -38,8 +37,8 @@ const chartColors = {
 
 interface CustomTooltipProps {
   active?: boolean;
-  payload?: readonly any[];
-  label?: any;
+  payload?: readonly unknown[];
+  label?: unknown;
   xAxisKey: string;
   dataKey: string;
 }
@@ -51,7 +50,8 @@ const CustomTooltip = ({
   dataKey,
 }: CustomTooltipProps) => {
   if (active && payload && payload.length) {
-    const dataPayload = payload[0].payload as Record<string, unknown>;
+    const firstItem = payload[0] as { payload?: Record<string, unknown> };
+    const dataPayload = firstItem?.payload || {};
 
     return (
       <div

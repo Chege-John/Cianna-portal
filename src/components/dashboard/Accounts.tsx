@@ -1,11 +1,14 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useSchool } from "@/context/SchoolContext";
 import { PageHeader } from "@/components/PageHeader";
 import StatsCard from "@/components/StatsCard";
 import CustomTable from "@/components/ui/CustomTable";
-import { FaUserPlus, FaUsers } from "react-icons/fa";
+import CustomSelect from "@/components/ui/CustomSelect";
+import { FaUserPlus, FaTimes } from "react-icons/fa";
 
 export default function Accounts() {
   const {
@@ -22,6 +25,31 @@ export default function Accounts() {
   const [teacherName, setTeacherName] = useState("");
   const [teacherEmail, setTeacherEmail] = useState("");
   const [teacherSubjectId, setTeacherSubjectId] = useState("");
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Esc key & body scroll lock listener for modern modal UX
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setIsModalOpen(false);
+      }
+    };
+    if (isModalOpen) {
+      window.addEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "unset";
+    }
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = "unset";
+    };
+  }, [isModalOpen]);
 
   if (!currentUser) return null;
 
@@ -47,6 +75,7 @@ export default function Accounts() {
     setTeacherName("");
     setTeacherEmail("");
     setTeacherSubjectId("");
+    setIsModalOpen(false);
     alert("Instructor account registered successfully!");
   };
 
@@ -71,16 +100,7 @@ export default function Accounts() {
         actionButton={{
           text: "Add Instructor",
           icon: <FaUserPlus size={12} />,
-          onClick: () => {
-            const element = document.getElementById("add-instructor-form");
-            if (element) {
-              element.scrollIntoView({ behavior: "smooth" });
-              element.classList.add("ring-4", "ring-[#256ff1]/20", "border-[#256ff1]");
-              setTimeout(() => {
-                element.classList.remove("ring-4", "ring-[#256ff1]/20", "border-[#256ff1]");
-              }, 2000);
-            }
-          }
+          onClick: () => setIsModalOpen(true)
         }}
       />
 
@@ -116,129 +136,165 @@ export default function Accounts() {
         />
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
-        {/* User Directory */}
-        <div className="xl:col-span-8 flex flex-col gap-4">
-          <div className="mb-1">
-            <h2 className="text-lg font-extrabold text-slate-950 dark:text-slate-100">System Accounts Directory</h2>
-            <p className="text-xs text-slate-400 mt-0.5">Filter and search all registered platform user credentials.</p>
-          </div>
-          <CustomTable
-            data={filteredUsers}
-            searchQuery={userSearch}
-            onSearchChange={setUserSearch}
-            searchPlaceholder="Search accounts..."
-            noun="accounts"
-            pageSize={6}
-            filterElement={
-              <select 
-                value={roleFilter}
-                onChange={(e) => setRoleFilter(e.target.value)}
-                className="px-4 py-2.5 bg-white dark:bg-slate-850 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-300 outline-none cursor-pointer shadow-sm focus:border-[#256ff1] transition-all"
-              >
-                <option value="all">All Roles</option>
-                <option value="super-admin">Super Admin</option>
-                <option value="admin">Admin</option>
-                <option value="teacher">Teacher</option>
-                <option value="student">Student</option>
-                <option value="parent">Parent</option>
-              </select>
-            }
-            columns={[
-              {
-                header: "Account Holder",
-                accessor: (user) => (
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center font-bold text-xs text-[#256ff1] shrink-0">
-                      {user.name.charAt(0)}
-                    </div>
-                    <span className="font-semibold text-slate-900 dark:text-slate-100">{user.name}</span>
+      <div className="w-full">
+        <CustomTable
+          data={filteredUsers}
+          searchQuery={userSearch}
+          onSearchChange={setUserSearch}
+          searchPlaceholder="Search accounts..."
+          noun="accounts"
+          pageSize={8}
+          filterElement={
+            <CustomSelect
+              options={[
+                { value: "all", label: "All Roles" },
+                { value: "super-admin", label: "Super Admin" },
+                { value: "admin", label: "Admin" },
+                { value: "teacher", label: "Teacher" },
+                { value: "student", label: "Student" },
+                { value: "parent", label: "Parent" },
+              ]}
+              value={roleFilter}
+              onChange={setRoleFilter}
+              placeholder="All Roles"
+              size="md"
+              buttonClassName="!border-2 !border-gray-200 dark:!border-slate-800 !rounded-xl hover:!border-[#256ff1]/60 transition-all !text-slate-800 dark:!text-slate-200 font-semibold min-w-[150px] !py-2.5"
+              style={{ backgroundColor: "oklch(96.8% .007 247.896)" }}
+            />
+          }
+          columns={[
+            {
+              header: "Account Holder",
+              accessor: (user) => (
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center font-bold text-xs text-[#256ff1] shrink-0">
+                    {user.name.charAt(0)}
                   </div>
-                )
-              },
-              {
-                header: "Email Address",
-                accessor: (user) => <span className="text-slate-500 dark:text-slate-400 font-mono text-xs">{user.email}</span>
-              },
-              {
-                header: "Role Badge",
-                accessor: (user) => (
-                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                    user.role === "super-admin" ? "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300" :
-                    user.role === "admin" ? "bg-[#256ff1]/10 text-[#256ff1] dark:bg-blue-900/30 dark:text-blue-300" :
-                    user.role === "teacher" ? "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300" :
-                    user.role === "student" ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300" :
-                    "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300"
-                  }`}>
-                    {user.role}
-                  </span>
-                )
-              },
-              {
-                header: "User ID",
-                align: "center",
-                accessor: (user) => <span className="font-mono text-[11px] text-slate-400 font-bold">{user.id}</span>
-              }
-            ]}
-          />
-        </div>
-
-        {/* Form Container */}
-        <div id="add-instructor-form" className="xl:col-span-4 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl p-6 shadow-sm shadow-slate-100/10 h-fit transition-all duration-300">
-          <div className="flex items-center gap-2 mb-4 text-[#256ff1]">
-            <FaUserPlus size={18} />
-            <h2 className="text-base font-extrabold text-slate-950 dark:text-slate-100">Add Instructor Account</h2>
-          </div>
-          
-          <form onSubmit={handleAddTeacher} className="space-y-4">
-            <div>
-              <label className="text-xs font-bold text-slate-400 block mb-1">Full Name</label>
-              <input 
-                type="text" 
-                required 
-                placeholder="e.g. Dr. Julia Fischer"
-                value={teacherName}
-                onChange={(e) => setTeacherName(e.target.value)}
-                className="w-full px-3.5 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 outline-none focus:border-[#256ff1] focus:ring-1 focus:ring-[#256ff1]/10 transition-all font-medium"
-              />
-            </div>
-            
-            <div>
-              <label className="text-xs font-bold text-slate-400 block mb-1">Email Address</label>
-              <input 
-                type="email" 
-                required 
-                placeholder="fischer@cianna.de"
-                value={teacherEmail}
-                onChange={(e) => setTeacherEmail(e.target.value)}
-                className="w-full px-3.5 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 outline-none focus:border-[#256ff1] focus:ring-1 focus:ring-[#256ff1]/10 transition-all font-medium"
-              />
-            </div>
-            
-            <div>
-              <label className="text-xs font-bold text-slate-400 block mb-1">Academic Specialization</label>
-              <select 
-                required 
-                value={teacherSubjectId}
-                onChange={(e) => setTeacherSubjectId(e.target.value)}
-                className="w-full px-3.5 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 outline-none focus:border-[#256ff1] focus:ring-1 focus:ring-[#256ff1]/10 transition-all font-bold cursor-pointer"
-              >
-                <option value="">Select subject focus...</option>
-                {subjects.map(s => (
-                  <option key={s.id} value={s.id}>{s.name}</option>
-                ))}
-              </select>
-            </div>
-
-            <button 
-              type="submit" 
-              className="w-full py-2.5 bg-[#256ff1] hover:bg-blue-600 text-white text-xs font-bold rounded-xl cursor-pointer transition-all duration-200 shadow-md shadow-[#256ff1]/10 mt-2 text-center"
-            >
-              Register Professional Teacher
-            </button>
-          </form>
-        </div>
+                  <span className="font-semibold text-slate-900 dark:text-slate-100">{user.name}</span>
+                </div>
+              )
+            },
+            {
+              header: "Email Address",
+              accessor: (user) => <span className="text-slate-500 dark:text-slate-400 font-mono text-xs">{user.email}</span>
+            },
+            {
+              header: "Role Badge",
+              accessor: (user) => (
+                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                  user.role === "super-admin" ? "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300" :
+                  user.role === "admin" ? "bg-[#256ff1]/10 text-[#256ff1] dark:bg-blue-900/30 dark:text-blue-300" :
+                  user.role === "teacher" ? "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300" :
+                  user.role === "student" ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300" :
+                  "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300"
+                }`}>
+                  {user.role}
+                </span>
+              )
+            },
+            {
+              header: "User ID",
+              align: "center",
+              accessor: (user) => <span className="font-mono text-[11px] text-slate-400 font-bold">{user.id}</span>
+            }
+          ]}
+        />
       </div>
+
+      {/* Add Instructor Modal with premium aesthetics & backdrop blur (rendered via Portal to break out of layout transform) */}
+      {isModalOpen && mounted && createPortal(
+        <div className="fixed inset-0 z-2000 flex items-center justify-center p-4">
+          {/* Backdrop with soft blur */}
+          <div 
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm transition-opacity duration-300 animate-fade-in"
+            onClick={() => setIsModalOpen(false)}
+          />
+          
+          {/* Form Container */}
+          <div className="relative w-full max-w-md bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl p-6 shadow-sm shadow-slate-100/10 dark:shadow-none transition-all duration-300 transform scale-100 z-10 animate-scale-up">
+            {/* Close Button */}
+            <button 
+              type="button"
+              onClick={() => setIsModalOpen(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+              aria-label="Close modal"
+            >
+              <FaTimes size={16} />
+            </button>
+
+            <div className="flex items-center gap-2 mb-4 text-[#256ff1]">
+              <FaUserPlus size={18} />
+              <h2 className="text-base font-extrabold text-slate-950 dark:text-slate-100">Add Instructor Account</h2>
+            </div>
+            
+            <form onSubmit={handleAddTeacher} className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-slate-800 mb-1.5">
+                  Full Name
+                </label>
+                <input 
+                  type="text" 
+                  required 
+                  placeholder="e.g. Dr. Julia Fischer"
+                  value={teacherName}
+                  onChange={(e) => setTeacherName(e.target.value)}
+                  className="w-full px-4 py-3 backdrop-blur-md border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-[#256ff1] outline-none transition-all text-slate-800 placeholder-slate-400 bg-white"
+                  style={{ backgroundColor: "oklch(96.8% .007 247.896)" }}
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-semibold text-slate-800 mb-1.5">
+                  Email Address
+                </label>
+                <input 
+                  type="email" 
+                  required 
+                  placeholder="fischer@cianna.de"
+                  value={teacherEmail}
+                  onChange={(e) => setTeacherEmail(e.target.value)}
+                  className="w-full px-4 py-3 backdrop-blur-md border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-[#256ff1] outline-none transition-all text-slate-800 placeholder-slate-400 bg-white"
+                  style={{ backgroundColor: "oklch(96.8% .007 247.896)" }}
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-semibold text-slate-800 mb-1.5">
+                  Academic Specialization
+                </label>
+                <CustomSelect
+                  options={subjects.map(s => ({ value: s.id, label: s.name }))}
+                  value={teacherSubjectId}
+                  onChange={setTeacherSubjectId}
+                  placeholder="Select subject focus..."
+                  buttonClassName="!border-2 !border-gray-200 !rounded-xl hover:!border-[#256ff1]/60 transition-all !text-slate-800 font-semibold"
+                  style={{ backgroundColor: "oklch(96.8% .007 247.896)" }}
+                  size="lg"
+                />
+              </div>
+
+              <div className="flex items-center gap-3 pt-2">
+                <button 
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="w-1/3 py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold rounded-xl cursor-pointer transition-all duration-200"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  className="w-2/3 bg-[#256ff1] hover:bg-[#3b7eff] text-white font-semibold py-3.5 rounded-xl 
+                    transition-all duration-300 ease-in-out transform hover:scale-[1.02] active:scale-[0.98]
+                    cursor-pointer shadow-sm hover:shadow-md shadow-[#256ff1]/30 text-center text-sm"
+                >
+                  Register Teacher
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }

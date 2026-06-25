@@ -1,5 +1,9 @@
 "use server";
 
+import { db } from "@/lib/db";
+import * as schema from "@/lib/db/schema";
+import { sql, eq } from "drizzle-orm";
+
 export interface LineChartData {
   month: string;
   revenue: number;
@@ -17,117 +21,150 @@ export interface WeeklyReservationsData {
   total: number;
 }
 
-// 1. Get Monthly Revenue Trend
 export async function getMonthlyRevenue(
-  role: string,
-  userId: string,
-  managedCounties: string[] = []
+  _role: string,
+  _userId: string,
+  _managedCounties: string[] = []
 ): Promise<LineChartData[]> {
-  // Simulate network delay
-  await new Promise((resolve) => setTimeout(resolve, 100));
+  void _role;
+  void _userId;
+  void _managedCounties;
+  const rows = await db
+    .select({
+      month: sql<string>`to_char(${schema.invoice.createdAt}::date, 'Mon')`,
+      revenue: sql<number>`COALESCE(SUM(${schema.invoice.amount}), 0)`,
+    })
+    .from(schema.invoice)
+    .groupBy(sql`to_char(${schema.invoice.createdAt}::date, 'Mon')`)
+    .orderBy(sql`MIN(${schema.invoice.createdAt}::date)`);
 
-  // High-fidelity realistic mock data
-  return [
-    { month: "Jan", revenue: 45000 },
-    { month: "Feb", revenue: 52000 },
-    { month: "Mar", revenue: 49000 },
-    { month: "Apr", revenue: 63000 },
-    { month: "May", revenue: 58000 },
-    { month: "Jun", revenue: 71000 },
-    { month: "Jul", revenue: 85000 },
-    { month: "Aug", revenue: 79000 },
-    { month: "Sep", revenue: 92000 },
-    { month: "Oct", revenue: 88000 },
-    { month: "Nov", revenue: 105000 },
-    { month: "Dec", revenue: 120000 },
-  ];
+  const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const revenueMap = new Map(rows.map(r => [r.month, Number(r.revenue)]));
+
+  return months.map(month => ({
+    month,
+    revenue: revenueMap.get(month) || 0,
+  }));
 }
 
-// 2. Get Dashboard Stats (User Distribution / Roles)
 export async function getDashboardStats(
-  role: string,
-  userId: string,
-  managedCounties: string[] = []
+  _role: string,
+  _userId: string,
+  _managedCounties: string[] = []
 ): Promise<{ userDistribution: UserDistributionItem[] }> {
-  // Simulate network delay
-  await new Promise((resolve) => setTimeout(resolve, 100));
+  void _role;
+  void _userId;
+  void _managedCounties;
+  const rows = await db
+    .select({
+      role: schema.user.role,
+      _count: sql<number>`COUNT(*)`,
+    })
+    .from(schema.user)
+    .groupBy(schema.user.role);
 
   return {
-    userDistribution: [
-      { role: "super_admin", _count: { role: 3 } },
-      { role: "manager", _count: { role: 12 } },
-      { role: "supervisor", _count: { role: 24 } },
-      { role: "agent", _count: { role: 85 } },
-      { role: "photographer", _count: { role: 18 } },
-    ],
+    userDistribution: rows.map(r => ({
+      role: r.role,
+      _count: { role: Number(r._count) },
+    })),
   };
 }
 
-// 3. Get Weekly Reservations
 export async function getWeeklyReservations(
-  role: string,
-  userId: string,
-  managedCounties: string[] = []
+  _role: string,
+  _userId: string,
+  _managedCounties: string[] = []
 ): Promise<WeeklyReservationsData> {
-  // Simulate network delay
-  await new Promise((resolve) => setTimeout(resolve, 100));
+  void _role;
+  void _userId;
+  void _managedCounties;
+  const days = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+  const rows = await db
+    .select({
+      dayOfWeek: sql<string>`to_char(${schema.attendanceRecord.date}::date, 'Dy')`,
+      count: sql<number>`COUNT(*)`,
+    })
+    .from(schema.attendanceRecord)
+    .groupBy(sql`to_char(${schema.attendanceRecord.date}::date, 'Dy')`);
 
-  const data = [
-    { name: "Mon", amount: 15 },
-    { name: "Tue", amount: 21 },
-    { name: "Wed", amount: 18 },
-    { name: "Thu", amount: 29 },
-    { name: "Fri", amount: 33 },
-    { name: "Sat", amount: 42 },
-    { name: "Sun", amount: 38 },
-  ];
-
+  const countMap = new Map(rows.map(r => [r.dayOfWeek, Number(r.count)]));
+  const data = days.map(name => ({
+    name,
+    amount: countMap.get(name) || 0,
+  }));
   const total = data.reduce((sum, item) => sum + item.amount, 0);
 
   return { data, total };
 }
 
-// 4. Get Property Types Distribution
 export async function getPropertyTypes(
-  role: string,
-  userId: string,
-  managedCounties: string[] = []
+  _role: string,
+  _userId: string,
+  _managedCounties: string[] = []
 ) {
-  await new Promise((resolve) => setTimeout(resolve, 100));
-  return [
-    { label: "Apartments", value: 55 },
-    { label: "Villas", value: 20 },
-    { label: "Penthouses", value: 15 },
-    { label: "Studios", value: 10 },
-  ];
+  void _role;
+  void _userId;
+  void _managedCounties;
+  const rows = await db
+    .select({
+      name: schema.classroom.name,
+      studentCount: sql<number>`(
+        SELECT COUNT(*) FROM ${schema.studentProfile}
+        WHERE ${schema.studentProfile.classroomId} = ${schema.classroom.id}
+      )`,
+    })
+    .from(schema.classroom);
+
+  return rows.map(r => ({
+    label: r.name,
+    value: Number(r.studentCount),
+  }));
 }
 
-// 5. Get Payment Status Mix
 export async function getPaymentStatus(
-  role: string,
-  userId: string,
-  managedCounties: string[] = []
+  _role: string,
+  _userId: string,
+  _managedCounties: string[] = []
 ) {
-  await new Promise((resolve) => setTimeout(resolve, 100));
-  return [
-    { label: "Paid", value: 75 },
-    { label: "Pending", value: 18 },
-    { label: "Failed", value: 7 },
-  ];
+  void _role;
+  void _userId;
+  void _managedCounties;
+  const rows = await db
+    .select({
+      status: schema.invoice.status,
+      count: sql<number>`COUNT(*)`,
+    })
+    .from(schema.invoice)
+    .groupBy(schema.invoice.status);
+
+  return rows.map(r => ({
+    label: r.status,
+    value: Number(r.count),
+  }));
 }
 
-// 6. Get Top Apartments Revenue
 export async function getTopApartments(
-  role: string,
-  userId: string,
-  managedCounties: string[] = []
+  _role: string,
+  _userId: string,
+  _managedCounties: string[] = []
 ) {
-  await new Promise((resolve) => setTimeout(resolve, 100));
-  return [
-    { name: "Cianna Heights A1", revenue: 45000 },
-    { name: "Oakwood Residency", revenue: 38000 },
-    { name: "Riverside Penthouse", revenue: 35000 },
-    { name: "Valley View Studio", revenue: 28000 },
-    { name: "Skyline Suite", revenue: 22000 },
-  ];
+  void _role;
+  void _userId;
+  void _managedCounties;
+  const rows = await db
+    .select({
+      name: schema.user.name,
+      revenue: sql<number>`COALESCE(SUM(${schema.invoice.amount}), 0)`,
+    })
+    .from(schema.invoice)
+    .innerJoin(schema.user, eq(schema.invoice.studentId, schema.user.id))
+    .groupBy(schema.user.name, schema.user.id)
+    .orderBy(sql`COALESCE(SUM(${schema.invoice.amount}), 0) DESC`)
+    .limit(5);
+
+  return rows.map(r => ({
+    name: r.name,
+    revenue: Number(r.revenue),
+  }));
 }

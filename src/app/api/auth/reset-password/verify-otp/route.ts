@@ -2,14 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { user as userTable, verification as verificationTable, account as accountTable } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
-import { scryptSync, randomBytes } from "node:crypto";
-
-// Helper to hash passwords using Better Auth's expected scrypt format (salt:key)
-function hashPassword(password: string): string {
-  const salt = randomBytes(16).toString("hex");
-  const key = scryptSync(password, salt, 64).toString("hex");
-  return `${salt}:${key}`;
-}
+import { hashPassword } from "@better-auth/utils/password";
 
 export async function POST(request: Request) {
   try {
@@ -78,7 +71,7 @@ export async function POST(request: Request) {
     }
 
     // 4. Hash the password and update in Neon Postgres account table
-    const hashedPwd = hashPassword(newPassword);
+    const hashedPwd = await hashPassword(newPassword);
 
     await db
       .update(accountTable)

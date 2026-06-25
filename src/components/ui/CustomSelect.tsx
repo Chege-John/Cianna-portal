@@ -55,6 +55,8 @@ interface CustomSelectProps {
   variant?: "default" | "outlined" | "filled";
   rainbowRing?: boolean;
   rainbowBorder?: boolean;
+  style?: React.CSSProperties;
+  openUpward?: boolean;
 }
 
 const CustomSelect: React.FC<CustomSelectProps> = ({
@@ -71,6 +73,8 @@ const CustomSelect: React.FC<CustomSelectProps> = ({
   variant = "outlined",
   rainbowRing = false,
   rainbowBorder = false,
+  style,
+  openUpward = false,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -137,19 +141,19 @@ const CustomSelect: React.FC<CustomSelectProps> = ({
 
   const variantClasses = {
     default: `
-      bg-white border border-gray-200
-      hover:border-[#256ff1]/60 hover:bg-gray-50
+      bg-white border border-gray-200 dark:bg-slate-900 dark:border-slate-800
+      hover:border-[#256ff1]/60 hover:bg-gray-50 dark:hover:bg-slate-850/50
       focus:border-[#256ff1] focus:ring-1 focus:ring-[#256ff1]
     `,
     outlined: `
-      bg-white border border-gray-300
+      bg-white border border-gray-300 dark:bg-slate-900 dark:border-slate-800
       hover:border-[#256ff1]/60
       focus:border-[#256ff1] focus:ring-1 focus:ring-[#256ff1]
     `,
     filled: `
-      bg-gray-100 border border-transparent
-      hover:bg-gray-200
-      focus:bg-white focus:border-[#256ff1] focus:ring-1 focus:ring-[#256ff1]
+      bg-gray-100 border border-transparent dark:bg-slate-800 dark:border-transparent
+      hover:bg-gray-200 dark:hover:bg-slate-700
+      focus:bg-white focus:border-[#256ff1] focus:ring-1 focus:ring-[#256ff1] dark:focus:bg-slate-900
     `,
   };
 
@@ -168,7 +172,10 @@ const CustomSelect: React.FC<CustomSelectProps> = ({
         ${disabled ? "opacity-50 cursor-not-allowed bg-gray-50" : "cursor-pointer"}
         ${buttonClassName}
       `}
-      style={rainbowBorder ? { border: "none", background: "transparent" } : {}}
+      style={{
+        ...(rainbowBorder ? { border: "none", background: "transparent" } : {}),
+        ...style
+      }}
       aria-haspopup="listbox"
       aria-expanded={isOpen}
     >
@@ -190,7 +197,7 @@ const CustomSelect: React.FC<CustomSelectProps> = ({
           </>
         )}
         <span
-          className={`truncate ${selectedOption ? "text-gray-900" : "text-gray-400"}`}
+          className={`truncate ${selectedOption ? "text-gray-900 dark:text-slate-100" : "text-gray-400 dark:text-slate-500"}`}
         >
           {selectedOption?.label || placeholder}
         </span>
@@ -259,7 +266,7 @@ const CustomSelect: React.FC<CustomSelectProps> = ({
       `}</style>
 
       {label && (
-        <label className="block text-sm font-medium text-gray-700 mb-1.5">
+        <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">
           {label}
         </label>
       )}
@@ -274,7 +281,11 @@ const CustomSelect: React.FC<CustomSelectProps> = ({
 
       {isOpen && (
         <div
-          className="absolute z-50 w-full mt-1.5 bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200"
+          className={`absolute z-50 w-full bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-xl shadow-sm overflow-hidden animate-in fade-in duration-200 ${
+            openUpward
+              ? "mb-1.5 bottom-full slide-in-from-bottom-2"
+              : "mt-1.5 top-full slide-in-from-top-2"
+          }`}
           role="listbox"
         >
           <div className="max-h-64 overflow-y-auto py-1">
@@ -289,8 +300,8 @@ const CustomSelect: React.FC<CustomSelectProps> = ({
                     w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors
                     ${
                       isSelected
-                        ? "bg-[#256ff1]/5 text-[#256ff1]"
-                        : "text-gray-700 hover:bg-gray-50"
+                        ? "bg-[#256ff1]/5 text-[#256ff1] dark:bg-blue-500/10 dark:text-blue-400"
+                        : "text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-850"
                     }
                   `}
                   role="option"

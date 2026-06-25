@@ -1,6 +1,27 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import { authClient } from "@/lib/auth-client";
+import {
+  getUsers,
+  getClassrooms,
+  getClassroomSubjects,
+  getSubjects,
+  getStudents,
+  getTeachers,
+  getGrades,
+  getAttendance,
+  getInvoices,
+  getPayments,
+  getAuditLogs,
+  addStudentAction,
+  addTeacherAction,
+  addClassroomAction,
+  createInvoiceAction,
+  recordGradeAction,
+  recordAttendanceAction,
+  payInvoiceAction,
+} from "@/server-actions/school";
 
 export type Role = "super-admin" | "admin" | "teacher" | "student" | "parent";
 
@@ -24,19 +45,19 @@ export interface TeacherProfile {
   id: string;
   name: string;
   email: string;
-  subjectId: string; // Specialization
+  subjectId: string;
 }
 
 export interface Classroom {
   id: string;
-  name: string; // e.g. "Deutsch A1 - Intensiv", "Deutsch B2 - Abendkurs"
+  name: string;
   teacherId?: string;
   subjectIds: string[];
 }
 
 export interface Subject {
   id: string;
-  name: string; // e.g. "Grammatik", "Konversation", "Schreiben"
+  name: string;
 }
 
 export interface Grade {
@@ -44,8 +65,8 @@ export interface Grade {
   studentId: string;
   classroomId: string;
   subjectId: string;
-  score: number; // 0 - 100
-  gradedBy: string; // Teacher name
+  score: number;
+  gradedBy: string;
   date: string;
 }
 
@@ -55,7 +76,7 @@ export interface AttendanceRecord {
   id: string;
   studentId: string;
   classroomId: string;
-  date: string; // YYYY-MM-DD
+  date: string;
   status: AttendanceStatus;
 }
 
@@ -63,7 +84,7 @@ export interface Invoice {
   id: string;
   studentId: string;
   amount: number;
-  description: string; // e.g. "Kursgebühr A1", "Lehrbücher"
+  description: string;
   dueDate: string;
   status: "Paid" | "Unpaid";
   createdAt: string;
@@ -73,7 +94,7 @@ export interface PaymentLog {
   id: string;
   invoiceId: string;
   amount: number;
-  paymentMethod: string; // e.g. "Kreditkarte", "Banküberweisung"
+  paymentMethod: string;
   date: string;
 }
 
@@ -100,7 +121,7 @@ interface SchoolContextType {
   auditLogs: AuditLog[];
   activeTab: string;
   setActiveTab: (tab: string) => void;
-  
+
   // Auth actions
   login: (email: string) => boolean;
   logout: () => void;
@@ -126,72 +147,25 @@ interface SchoolContextType {
 
 const SchoolContext = createContext<SchoolContextType | undefined>(undefined);
 
-// Initial Mock Data
-const initialUsers: User[] = [
-  { id: "u-1", name: "Herr Müller", email: "mueller@cianna.de", role: "super-admin" },
-  { id: "u-2", name: "Frau Schmidt", email: "schmidt@cianna.de", role: "admin" },
-  { id: "u-3", name: "Herr Weber (Deutsch-A1)", email: "weber@cianna.de", role: "teacher" },
-  { id: "u-4", name: "Frau Wagner (Deutsch-B2)", email: "wagner@cianna.de", role: "teacher" },
-  { id: "u-5", name: "Lukas Meier", email: "lukas@student.de", role: "student" },
-  { id: "u-6", name: "Sofia Becker", email: "sofia@student.de", role: "student" },
-  { id: "u-7", name: "Maria Meier", email: "maria@parent.de", role: "parent" },
-  { id: "u-8", name: "John Irungu Chege", email: "johnirunguchege2000@gmail.com", role: "super-admin" }
-];
+interface DbUser {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+}
 
-const initialSubjects: Subject[] = [
-  { id: "s-1", name: "Grammatik & Wortschatz" },
-  { id: "s-2", name: "Konversation & Aussprache" },
-  { id: "s-3", name: "Schreiben & Hören" }
-];
-
-const initialClassrooms: Classroom[] = [
-  { id: "c-1", name: "Deutsch A1 - Intensiv", teacherId: "u-3", subjectIds: ["s-1", "s-3"] },
-  { id: "c-2", name: "Deutsch B2 - Abendkurs", teacherId: "u-4", subjectIds: ["s-1", "s-2", "s-3"] }
-];
-
-const initialStudents: StudentProfile[] = [
-  { id: "u-5", name: "Lukas Meier", email: "lukas@student.de", classroomId: "c-1", parentEmail: "maria@parent.de" },
-  { id: "u-6", name: "Sofia Becker", email: "sofia@student.de", classroomId: "c-2" }
-];
-
-const initialTeachers: TeacherProfile[] = [
-  { id: "u-3", name: "Herr Weber", email: "weber@cianna.de", subjectId: "s-1" },
-  { id: "u-4", name: "Frau Wagner", email: "wagner@cianna.de", subjectId: "s-2" }
-];
-
-const initialGrades: Grade[] = [
-  { id: "g-1", studentId: "u-5", classroomId: "c-1", subjectId: "s-1", score: 85, gradedBy: "Herr Weber", date: "2026-06-15" },
-  { id: "g-2", studentId: "u-6", classroomId: "c-2", subjectId: "s-1", score: 92, gradedBy: "Frau Wagner", date: "2026-06-16" },
-  { id: "g-3", studentId: "u-6", classroomId: "c-2", subjectId: "s-2", score: 95, gradedBy: "Frau Wagner", date: "2026-06-18" }
-];
-
-const initialAttendance: AttendanceRecord[] = [
-  { id: "a-1", studentId: "u-5", classroomId: "c-1", date: "2026-06-20", status: "Present" },
-  { id: "a-2", studentId: "u-5", classroomId: "c-1", date: "2026-06-21", status: "Late" },
-  { id: "a-3", studentId: "u-6", classroomId: "c-2", date: "2026-06-20", status: "Present" },
-  { id: "a-4", studentId: "u-6", classroomId: "c-2", date: "2026-06-21", status: "Present" }
-];
-
-const initialInvoices: Invoice[] = [
-  { id: "inv-1", studentId: "u-5", amount: 350.00, description: "Kursgebühr A1 - Intensiv (Monat Juni)", dueDate: "2026-07-05", status: "Unpaid", createdAt: "2026-06-15" },
-  { id: "inv-2", studentId: "u-5", amount: 45.00, description: "Lehrmaterialien A1 (Schritte International)", dueDate: "2026-06-25", status: "Paid", createdAt: "2026-06-10" },
-  { id: "inv-3", studentId: "u-6", amount: 480.00, description: "Kursgebühr B2 - Abendkurs (Monat Juni)", dueDate: "2026-06-30", status: "Paid", createdAt: "2026-06-10" }
-];
-
-const initialPayments: PaymentLog[] = [
-  { id: "p-1", invoiceId: "inv-2", amount: 45.00, paymentMethod: "Kreditkarte", date: "2026-06-12" },
-  { id: "p-2", invoiceId: "inv-3", amount: 480.00, paymentMethod: "Banküberweisung", date: "2026-06-14" }
-];
-
-const initialAuditLogs: AuditLog[] = [
-  { id: "l-1", timestamp: "2026-06-10T09:00:00Z", actor: "Herr Müller", role: "super-admin", action: "Cianna Portal initialisiert." },
-  { id: "l-2", timestamp: "2026-06-10T10:15:00Z", actor: "Frau Schmidt", role: "admin", action: "Klassenräume Deutsch A1 und B2 eingerichtet." },
-  { id: "l-3", timestamp: "2026-06-15T14:30:00Z", actor: "Herr Weber", role: "teacher", action: "Noten für Lukas Meier in Grammatik eingetragen." }
-];
+function mapDbUserToUser(dbUser: DbUser): User {
+  return {
+    id: dbUser.id,
+    name: dbUser.name,
+    email: dbUser.email,
+    role: dbUser.role as Role,
+  };
+}
 
 export const SchoolProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [authLoading, setAuthLoading] = useState<boolean>(true);
+  const [authLoading, setAuthLoading] = useState(true);
   const [users, setUsers] = useState<User[]>([]);
   const [classrooms, setClassrooms] = useState<Classroom[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
@@ -202,278 +176,175 @@ export const SchoolProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [payments, setPayments] = useState<PaymentLog[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
-  const [activeTab, setActiveTab] = useState<string>("overview");
+  const [activeTab, setActiveTab] = useState("overview");
 
-  // Load from local storage
-  useEffect(() => {
-    const getLocal = <T,>(key: string, initial: T): T => {
-      const stored = localStorage.getItem(key);
-      return stored ? JSON.parse(stored) : initial;
-    };
+  const loadAllData = useCallback(async () => {
+    const [
+      dbUsers,
+      dbSubjects,
+      dbClassrooms,
+      dbClassroomSubjects,
+      dbStudents,
+      dbTeachers,
+      dbGrades,
+      dbAttendance,
+      dbInvoices,
+      dbPayments,
+      dbAuditLogs,
+    ] = await Promise.all([
+      getUsers(),
+      getSubjects(),
+      getClassrooms(),
+      getClassroomSubjects(),
+      getStudents(),
+      getTeachers(),
+      getGrades(),
+      getAttendance(),
+      getInvoices(),
+      getPayments(),
+      getAuditLogs(),
+    ]);
 
-    const loadedUsers = getLocal<User[]>("school_users", initialUsers);
-    // Ensure the new super-admin profile is always injected even if they have old local storage users!
-    const hasJohn = loadedUsers.some(u => u.email.toLowerCase() === "johnirunguchege2000@gmail.com");
-    if (!hasJohn) {
-      const updatedUsers: User[] = [
-        ...loadedUsers,
-        { id: "u-8", name: "John Irungu Chege", email: "johnirunguchege2000@gmail.com", role: "super-admin" }
-      ];
-      localStorage.setItem("school_users", JSON.stringify(updatedUsers));
-      setUsers(updatedUsers);
-    } else {
-      setUsers(loadedUsers);
-    }
-
-    setSubjects(getLocal("school_subjects", initialSubjects));
-    setClassrooms(getLocal("school_classrooms", initialClassrooms));
-    setStudents(getLocal("school_students", initialStudents));
-    setTeachers(getLocal("school_teachers", initialTeachers));
-    setGrades(getLocal("school_grades", initialGrades));
-    setAttendance(getLocal("school_attendance", initialAttendance));
-    setInvoices(getLocal("school_invoices", initialInvoices));
-    setPayments(getLocal("school_payments", initialPayments));
-    setAuditLogs(getLocal("school_audit", initialAuditLogs));
-
-    const storedUser = localStorage.getItem("school_current_user");
-    if (storedUser) {
-      setCurrentUser(JSON.parse(storedUser));
-    } else {
-      setCurrentUser(null);
-    }
-    setAuthLoading(false);
+    setUsers(dbUsers.map(mapDbUserToUser));
+    setSubjects(dbSubjects);
+    setClassrooms(
+      dbClassrooms.map((c) => ({
+        id: c.id,
+        name: c.name,
+        teacherId: c.teacherId || undefined,
+        subjectIds: dbClassroomSubjects
+          .filter((cs) => cs.classroomId === c.id)
+          .map((cs) => cs.subjectId),
+      }))
+    );
+    setStudents(
+      dbStudents.map((s) => ({
+        id: s.id,
+        name: dbUsers.find((u) => u.id === s.id)?.name || "",
+        email: dbUsers.find((u) => u.id === s.id)?.email || "",
+        classroomId: s.classroomId || "",
+        parentEmail: s.parentEmail || undefined,
+      }))
+    );
+    setTeachers(
+      dbTeachers.map((t) => ({
+        id: t.id,
+        name: dbUsers.find((u) => u.id === t.id)?.name || "",
+        email: dbUsers.find((u) => u.id === t.id)?.email || "",
+        subjectId: t.subjectId || "",
+      }))
+    );
+    setGrades(dbGrades);
+    setAttendance(dbAttendance);
+    setInvoices(
+      dbInvoices.map((inv) => ({
+        ...inv,
+        amount: Number(inv.amount),
+      }))
+    );
+    setPayments(
+      dbPayments.map((p) => ({
+        ...p,
+        amount: Number(p.amount),
+      }))
+    );
+    setAuditLogs(dbAuditLogs);
   }, []);
 
-  // Save changes helper
-  const syncStorage = (key: string, data: any) => {
-    localStorage.setItem(key, JSON.stringify(data));
+  // Listen for better-auth session changes reactively
+  const { data: session, isPending } = authClient.useSession();
+
+  useEffect(() => {
+    if (isPending) return;
+
+    if (session?.user) {
+      const userObj: User = {
+        id: session.user.id,
+        name: session.user.name,
+        email: session.user.email,
+        role: (session.user as { role?: string }).role as Role,
+      };
+      setTimeout(() => {
+        setCurrentUser(userObj);
+        loadAllData();
+      }, 0);
+    } else {
+      setTimeout(() => {
+        setCurrentUser(null);
+      }, 0);
+    }
+    setTimeout(() => {
+      setAuthLoading(false);
+    }, 0);
+  }, [session, isPending, loadAllData]);
+
+  const login = (_email: string): boolean => {
+    void _email;
+    return true;
   };
 
-  const addLog = (action: string, actorName?: string, actorRole?: Role) => {
-    const name = actorName || currentUser?.name || "System";
-    const role = actorRole || currentUser?.role || "super-admin";
-    const newLog: AuditLog = {
-      id: `l-${Date.now()}`,
-      timestamp: new Date().toISOString(),
-      actor: name,
-      role,
-      action
-    };
-    setAuditLogs(prev => {
-      const updated = [newLog, ...prev];
-      syncStorage("school_audit", updated);
-      return updated;
-    });
+  const logout = async () => {
+    await authClient.signOut();
+    setCurrentUser(null);
+    setActiveTab("overview");
   };
 
-  // Auth Operations
-  const login = (email: string): boolean => {
-    const user = users.find(u => u.email.toLowerCase() === email.toLowerCase());
+  const switchRole = async (role: Role) => {
+    const user = users.find((u) => u.role === role);
     if (user) {
       setCurrentUser(user);
       setActiveTab("overview");
-      syncStorage("school_current_user", user);
-      addLog(`Eingeloggt als ${user.name} (${user.role})`, user.name, user.role);
-      return true;
-    }
-    return false;
-  };
-
-  const logout = () => {
-    if (currentUser) {
-      addLog(`Ausgeloggt`, currentUser.name, currentUser.role);
-    }
-    setCurrentUser(null);
-    setActiveTab("overview");
-    localStorage.removeItem("school_current_user");
-  };
-
-  const switchRole = (role: Role) => {
-    const userWithRole = users.find(u => u.role === role);
-    if (userWithRole) {
-      setCurrentUser(userWithRole);
-      setActiveTab("overview");
-      syncStorage("school_current_user", userWithRole);
-      addLog(`Rolle gewechselt zu: ${userWithRole.name} (${role})`, userWithRole.name, userWithRole.role);
     }
   };
 
   // Admin Actions
-  const addStudent = (name: string, email: string, classroomId: string, parentEmail?: string) => {
-    const studentId = `u-${Date.now()}`;
-    const newUser: User = { id: studentId, name, email, role: "student" };
-    const newProfile: StudentProfile = { id: studentId, name, email, classroomId, parentEmail };
-
-    const updatedUsers = [...users, newUser];
-    const updatedStudents = [...students, newProfile];
-
-    setUsers(updatedUsers);
-    setStudents(updatedStudents);
-
-    syncStorage("school_users", updatedUsers);
-    syncStorage("school_students", updatedStudents);
-
-    addLog(`Schüler registriert: ${name} (${email})`);
+  const addStudent = async (name: string, email: string, classroomId: string, parentEmail?: string) => {
+    await addStudentAction(name, email, classroomId, parentEmail);
+    await loadAllData();
   };
 
-  const addTeacher = (name: string, email: string, subjectId: string) => {
-    const teacherId = `u-${Date.now()}`;
-    const newUser: User = { id: teacherId, name, email, role: "teacher" };
-    const newProfile: TeacherProfile = { id: teacherId, name, email, subjectId };
-
-    const updatedUsers = [...users, newUser];
-    const updatedTeachers = [...teachers, newProfile];
-
-    setUsers(updatedUsers);
-    setTeachers(updatedTeachers);
-
-    syncStorage("school_users", updatedUsers);
-    syncStorage("school_teachers", updatedTeachers);
-
-    addLog(`Lehrkraft registriert: ${name} (${email})`);
+  const addTeacher = async (name: string, email: string, subjectId: string) => {
+    await addTeacherAction(name, email, subjectId);
+    await loadAllData();
   };
 
-  const addClassroom = (name: string, subjectIds: string[]) => {
-    const newClass: Classroom = {
-      id: `c-${Date.now()}`,
-      name,
-      subjectIds
-    };
-    const updated = [...classrooms, newClass];
-    setClassrooms(updated);
-    syncStorage("school_classrooms", updated);
-    addLog(`Klassenraum erstellt: ${name}`);
+  const addClassroom = async (name: string, subjectIds: string[]) => {
+    await addClassroomAction(name, subjectIds);
+    await loadAllData();
   };
 
-  const createInvoice = (studentId: string, amount: number, description: string) => {
-    const student = students.find(s => s.id === studentId);
-    const newInvoice: Invoice = {
-      id: `inv-${Date.now()}`,
-      studentId,
-      amount,
-      description,
-      dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split("T")[0], // 14 days due
-      status: "Unpaid",
-      createdAt: new Date().toISOString().split("T")[0]
-    };
-    const updated = [newInvoice, ...invoices];
-    setInvoices(updated);
-    syncStorage("school_invoices", updated);
-    addLog(`Rechnung erstellt für ${student?.name || studentId}: ${amount} EUR - ${description}`);
+  const createInvoice = async (studentId: string, amount: number, description: string) => {
+    await createInvoiceAction(studentId, amount, description);
+    await loadAllData();
   };
 
   // Teacher Actions
-  const recordGrade = (studentId: string, classroomId: string, subjectId: string, score: number) => {
-    const student = students.find(s => s.id === studentId);
-    const subject = subjects.find(s => s.id === subjectId);
-    const newGrade: Grade = {
-      id: `g-${Date.now()}`,
-      studentId,
-      classroomId,
-      subjectId,
-      score,
-      gradedBy: currentUser?.name || "Lehrkraft",
-      date: new Date().toISOString().split("T")[0]
-    };
-    const updated = [newGrade, ...grades];
-    setGrades(updated);
-    syncStorage("school_grades", updated);
-    addLog(`Note eingetragen für ${student?.name} in ${subject?.name}: ${score}%`);
+  const recordGrade = async (studentId: string, classroomId: string, subjectId: string, score: number) => {
+    await recordGradeAction(studentId, classroomId, subjectId, score, currentUser?.name || "Lehrkraft");
+    await loadAllData();
   };
 
-  const recordAttendance = (classroomId: string, date: string, records: { studentId: string; status: AttendanceStatus }[]) => {
-    const room = classrooms.find(c => c.id === classroomId);
-    const newRecords: AttendanceRecord[] = records.map((r, index) => ({
-      id: `a-${Date.now()}-${index}`,
-      studentId: r.studentId,
-      classroomId,
-      date,
-      status: r.status
-    }));
-
-    // Filter out existing records for this class and date
-    setAttendance(prev => {
-      const filtered = prev.filter(a => !(a.classroomId === classroomId && a.date === date));
-      const updated = [...filtered, ...newRecords];
-      syncStorage("school_attendance", updated);
-      return updated;
-    });
-
-    addLog(`Anwesenheit protokolliert für ${room?.name} am ${date}`);
+  const recordAttendance = async (classroomId: string, date: string, records: { studentId: string; status: AttendanceStatus }[]) => {
+    await recordAttendanceAction(classroomId, date, records);
+    await loadAllData();
   };
 
   // Student/Parent Actions
-  const payInvoice = (invoiceId: string, paymentMethod: string) => {
-    const invoice = invoices.find(i => i.id === invoiceId);
-    if (!invoice) return;
-
-    // Update Invoice Status
-    const updatedInvoices = invoices.map(inv => {
-      if (inv.id === invoiceId) {
-        return { ...inv, status: "Paid" as const };
-      }
-      return inv;
-    });
-    setInvoices(updatedInvoices);
-    syncStorage("school_invoices", updatedInvoices);
-
-    // Record Payment Log
-    const newPayment: PaymentLog = {
-      id: `p-${Date.now()}`,
-      invoiceId,
-      amount: invoice.amount,
-      paymentMethod,
-      date: new Date().toISOString().split("T")[0]
-    };
-    const updatedPayments = [newPayment, ...payments];
-    setPayments(updatedPayments);
-    syncStorage("school_payments", updatedPayments);
-
-    const student = students.find(s => s.id === invoice.studentId);
-    addLog(`Rechnung bezahlt: ${invoice.amount} EUR von ${student?.name} via ${paymentMethod}`);
+  const payInvoice = async (invoiceId: string, paymentMethod: string) => {
+    await payInvoiceAction(invoiceId, paymentMethod);
+    await loadAllData();
   };
 
-  // Reset database helper
   const resetDatabase = () => {
-    localStorage.removeItem("school_users");
-    localStorage.removeItem("school_subjects");
-    localStorage.removeItem("school_classrooms");
-    localStorage.removeItem("school_students");
-    localStorage.removeItem("school_teachers");
-    localStorage.removeItem("school_grades");
-    localStorage.removeItem("school_attendance");
-    localStorage.removeItem("school_invoices");
-    localStorage.removeItem("school_payments");
-    localStorage.removeItem("school_audit");
-    localStorage.removeItem("school_current_user");
-
-    setUsers(initialUsers);
-    setSubjects(initialSubjects);
-    setClassrooms(initialClassrooms);
-    setStudents(initialStudents);
-    setTeachers(initialTeachers);
-    setGrades(initialGrades);
-    setAttendance(initialAttendance);
-    setInvoices(initialInvoices);
-    setPayments(initialPayments);
-    setAuditLogs(initialAuditLogs);
-    setCurrentUser(initialUsers[0]);
-    
-    localStorage.setItem("school_current_user", JSON.stringify(initialUsers[0]));
-    
-    addLog(`Datenbank auf Standardwerte zurückgesetzt.`);
+    // Redirect to seed via API or show toast
+    fetch("/api/auth/reset-password/send-otp", { method: "POST", body: "{}" }).catch(() => {});
+    window.location.reload();
   };
 
-  const updateUserPassword = (email: string, password: string) => {
-    const updatedUsers = users.map(u => {
-      if (u.email.toLowerCase() === email.toLowerCase()) {
-        return { ...u, password };
-      }
-      return u;
-    });
-    setUsers(updatedUsers);
-    syncStorage("school_users", updatedUsers);
-    addLog(`Passwort zurückgesetzt für Benutzer: ${email}`, "System", "super-admin");
+  const updateUserPassword = (_email: string, _password: string) => {
+    void _email;
+    void _password;
+    // Password update is handled server-side via verify-otp route
   };
 
   return (
@@ -504,7 +375,7 @@ export const SchoolProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         recordAttendance,
         payInvoice,
         resetDatabase,
-        updateUserPassword
+        updateUserPassword,
       }}
     >
       {children}

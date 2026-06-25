@@ -110,7 +110,7 @@ export function RoundedPieChart({ data }: RoundedPieChartProps) {
             fontSize={12}
             fontWeight={600}
             fill="#ffffff"
-            formatter={(value: any) => String(value)}
+            formatter={(value: unknown) => String(value)}
           />
         </Pie>
         <Legend content={<CompactLegend />} />

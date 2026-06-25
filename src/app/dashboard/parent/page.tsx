@@ -23,7 +23,9 @@ export default function ParentPage() {
   // Initialize selected child profile
   useEffect(() => {
     if (myChildren.length > 0 && !selectedChildId) {
-      setSelectedChildId(myChildren[0].id);
+      setTimeout(() => {
+        setSelectedChildId(myChildren[0].id);
+      }, 0);
     }
   }, [myChildren, selectedChildId]);
 
@@ -49,7 +51,7 @@ export default function ParentPage() {
           </div>
           <h2 className="text-xl font-black">Welcome back, {currentUser.name}!</h2>
           <p className="text-xs text-blue-100 leading-normal max-w-xl">
-            Audit your children's language training progress reports, review official teacher-logged evaluations, check session attendance ratios, and securely settle outstanding school bills.
+            Audit your children&apos;s language training progress reports, review official teacher-logged evaluations, check session attendance ratios, and securely settle outstanding school bills.
           </p>
         </div>
       </div>

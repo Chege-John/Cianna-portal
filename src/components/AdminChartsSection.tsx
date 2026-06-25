@@ -14,6 +14,8 @@ import {
   getPropertyTypes,
   getPaymentStatus,
   getTopApartments,
+  type LineChartData,
+  type WeeklyReservationsData,
 } from "@/server-actions/dashboard";
 
 interface AdminChartsSectionProps {
@@ -25,13 +27,23 @@ interface AdminChartsSectionProps {
   };
 }
 
+interface ChartItem {
+  label: string;
+  value: number;
+}
+
+interface ApartmentItem {
+  name: string;
+  revenue: number;
+}
+
 export default function AdminChartsSection({ currentUser }: AdminChartsSectionProps) {
-  const [revenueData, setRevenueData] = useState<any[]>([]);
-  const [userDistData, setUserDistData] = useState<any[]>([]);
-  const [weeklyResData, setWeeklyResData] = useState<any>({ data: [], total: 0 });
-  const [propertyTypesData, setPropertyTypesData] = useState<any[]>([]);
-  const [paymentStatusData, setPaymentStatusData] = useState<any[]>([]);
-  const [topApartmentsData, setTopApartmentsData] = useState<any[]>([]);
+  const [revenueData, setRevenueData] = useState<LineChartData[]>([]);
+  const [userDistData, setUserDistData] = useState<ChartItem[]>([]);
+  const [weeklyResData, setWeeklyResData] = useState<WeeklyReservationsData>({ data: [], total: 0 });
+  const [propertyTypesData, setPropertyTypesData] = useState<ChartItem[]>([]);
+  const [paymentStatusData, setPaymentStatusData] = useState<ChartItem[]>([]);
+  const [topApartmentsData, setTopApartmentsData] = useState<ApartmentItem[]>([]);
   const [chartsLoading, setChartsLoading] = useState(true);
 
   useEffect(() => {
@@ -52,7 +64,7 @@ export default function AdminChartsSection({ currentUser }: AdminChartsSectionPr
 
         setRevenueData(rev);
         
-        const mappedDist = dist.userDistribution.map((item: any) => ({
+        const mappedDist = dist.userDistribution.map((item) => ({
           label: item.role
             .replace(/_/g, " ")
             .replace(/\b\w/g, (l: string) => l.toUpperCase()),
@@ -191,7 +203,7 @@ export default function AdminChartsSection({ currentUser }: AdminChartsSectionPr
 
                   <div className="space-y-5">
                     {topApartmentsData.map((apt, index) => {
-                      const maxRevenue = Math.max(...topApartmentsData.map((a: any) => a.revenue), 1);
+                      const maxRevenue = Math.max(...topApartmentsData.map((a: ApartmentItem) => a.revenue), 1);
                       const pct = (apt.revenue / maxRevenue) * 100;
                       return (
                         <div key={index} className="space-y-2">
