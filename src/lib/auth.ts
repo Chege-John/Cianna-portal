@@ -18,7 +18,13 @@ export const auth = betterAuth({
         type: "string",
         required: true,
         defaultValue: "student",
-        input: false, // Security: prevent self-assigning high privilege roles during standard signup
+        input: false,
+      },
+      mustChangePassword: {
+        type: "boolean",
+        required: true,
+        defaultValue: false,
+        input: false,
       },
     },
   },

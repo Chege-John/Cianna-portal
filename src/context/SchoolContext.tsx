@@ -31,7 +31,7 @@ export interface User {
   name: string;
   email: string;
   role: Role;
-  password?: string;
+  mustChangePassword?: boolean;
 }
 
 export interface StudentProfile {
@@ -39,6 +39,18 @@ export interface StudentProfile {
   name: string;
   email: string;
   classroomId: string;
+  firstName: string;
+  lastName: string;
+  dob: string;
+  nationality: string;
+  idNumber: string;
+  profession: string;
+  courseLevel: "A1" | "A2" | "B1" | "B2";
+  schedule: "Online" | "Physical" | "Hybrid";
+  phoneNumber: string;
+  guardianName: string;
+  guardianRelationship: string;
+  guardianPhone: string;
   parentEmail?: string;
 }
 
@@ -85,9 +97,10 @@ export interface Invoice {
   id: string;
   studentId: string;
   amount: number;
+  paidAmount: number;
   description: string;
   dueDate: string;
-  status: "Paid" | "Unpaid";
+  status: "Paid" | "Unpaid" | "Partially Paid";
   createdAt: string;
 }
 
@@ -96,6 +109,7 @@ export interface PaymentLog {
   invoiceId: string;
   amount: number;
   paymentMethod: string;
+  transactionReference?: string | null;
   date: string;
 }
 
@@ -131,7 +145,7 @@ interface SchoolContextType {
   switchRole: (role: Role) => void;
 
   // Admin actions
-  addStudent: (name: string, email: string, classroomId: string, parentEmail?: string) => void;
+  addStudent: (data: any) => void;
   addTeacher: (name: string, email: string, subjectId: string) => void;
   addClassroom: (name: string, subjectIds: string[]) => void;
   createInvoice: (studentId: string, amount: number, description: string) => void;
@@ -205,7 +219,8 @@ export const SchoolProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         id: session.user.id,
         name: session.user.name,
         email: session.user.email,
-        role: (session.user as { role?: string }).role as Role,
+        role: (session.user as any).role as Role,
+        mustChangePassword: (session.user as any).mustChangePassword,
       };
       // Use requestAnimationFrame or microtask to ensure state updates don't conflict
       queueMicrotask(() => {

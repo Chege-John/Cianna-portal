@@ -132,7 +132,7 @@ export default function AdminChartsSection({ currentUser, setActiveTab }: AdminC
                           <span>{student.name}</span>
                         </div>
                         <span className="font-bold text-[#256ff1]">
-                          {student.revenue.toLocaleString()} €
+                          {student.revenue.toLocaleString()} KSh
                         </span>
                       </div>
                       <div className="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">

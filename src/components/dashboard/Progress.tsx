@@ -66,7 +66,7 @@ export default function Progress({ selectedChildId }: ProgressProps) {
   const role = currentUser.role;
 
   // Global helper resolvers
-  const getClassroomName = (id: string) => classrooms.find(c => c.id === id)?.name || "Unassigned";
+  const getClassroomName = (id?: string | null) => id ? (classrooms.find(c => c.id === id)?.name || "Unassigned") : "Unassigned";
   const getSubjectName = (id: string) => subjects.find(s => s.id === id)?.name || "No Subject";
   const getStudentName = (id: string) => students.find(s => s.id === id)?.name || "Unknown Student";
 

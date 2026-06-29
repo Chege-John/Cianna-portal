@@ -3,6 +3,8 @@
 import React, { useState } from "react";
 import toast from "react-hot-toast";
 import { FaEye, FaEyeSlash, FaLock, FaSpinner } from "react-icons/fa";
+import { authClient } from "@/lib/auth-client";
+import { activateAccountAction } from "@/server-actions/school";
 
 interface FirstLoginInfoType {
   isFirstLogin: boolean;
@@ -41,7 +43,7 @@ const toastStyles = {
       borderRadius: "12px",
       fontSize: "14px",
       fontWeight: "500",
-      boxShadow: "0 10px 15px -3px rgba(239, 68, 68, 0.3), 0 4px 6px -2px rgba(239, 68, 68, 0.2)",
+      boxShadow: "0 10px 15px -3px rgba(239, 68, 68, 0.3), 0 4px 68px -2px rgba(239, 68, 68, 0.2)",
     },
     iconTheme: {
       primary: "#ffffff",
@@ -55,6 +57,7 @@ export default function FirstLoginModal({
   firstLoginData,
   onComplete,
 }: FirstLoginModalProps) {
+  const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -85,20 +88,34 @@ export default function FirstLoginModal({
 
     setIsSubmitting(true);
     
-    // Simulate security provisioning delay
-    await new Promise((resolve) => setTimeout(resolve, 1200));
-    
-    setIsSubmitting(false);
-    toast.success("Account secured successfully!", {
-      position: "bottom-left",
-      duration: 3000,
-      ...toastStyles.success,
-    });
-    onComplete();
+    try {
+      // Use the dedicated server action to "Activate Account"
+      // This will update the password and clear the mustChangePassword flag
+      const result = await activateAccountAction(currentPassword, newPassword);
+      
+      if (result.success) {
+        toast.success("Account secured successfully!", {
+          position: "bottom-left",
+          duration: 3000,
+          ...toastStyles.success,
+        });
+        onComplete();
+      } else {
+        throw new Error(result.error || "Failed to update password");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to update password", {
+        position: "bottom-left",
+        duration: 4000,
+        ...toastStyles.error,
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4">
       {/* Backdrop with elegant glassmorphism */}
       <div 
         className="absolute inset-0 bg-slate-900/60 backdrop-blur-md transition-opacity duration-300"
@@ -128,7 +145,21 @@ export default function FirstLoginModal({
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label className="block text-sm font-semibold text-slate-850 mb-2">
+            <label className="block text-sm font-semibold text-slate-800 mb-2">
+              Current (Temporary) Password
+            </label>
+            <input
+              type="password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              placeholder="Paste from email"
+              className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-[#256ff1] outline-none transition-all text-slate-800 placeholder-slate-400 bg-slate-50"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-slate-800 mb-2">
               New Password
             </label>
             <div className="relative">
@@ -155,7 +186,7 @@ export default function FirstLoginModal({
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-slate-850 mb-2">
+            <label className="block text-sm font-semibold text-slate-800 mb-2">
               Confirm Password
             </label>
             <input

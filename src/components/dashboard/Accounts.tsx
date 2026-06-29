@@ -324,7 +324,7 @@ export default function Accounts() {
 
       {/* Add Instructor Modal */}
 {isModalOpen && mounted && createPortal(
-  <div className="fixed inset-0 z-2000 flex items-center justify-center p-4">
+  <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4">
     {/* Backdrop with soft blur */}
     <div 
       className="fixed inset-0 bg-black/40 backdrop-blur-sm transition-opacity duration-300 animate-fade-in"
@@ -433,7 +433,7 @@ export default function Accounts() {
 
       {/* View Account Modal */}
 {isViewModalOpen && selectedUser && mounted && createPortal(
-  <div className="fixed inset-0 z-2000 flex items-center justify-center p-4">
+  <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4">
     <div 
       className="fixed inset-0 bg-black/40 backdrop-blur-sm transition-opacity duration-300 animate-fade-in"
       onClick={() => setIsViewModalOpen(false)}
@@ -517,7 +517,7 @@ export default function Accounts() {
 
       {/* Edit Account Modal */}
 {isEditModalOpen && selectedUser && mounted && createPortal(
-  <div className="fixed inset-0 z-2000 flex items-center justify-center p-4">
+  <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4">
     <div 
       className="fixed inset-0 bg-black/40 backdrop-blur-sm transition-opacity duration-300 animate-fade-in"
       onClick={() => setIsEditModalOpen(false)}
@@ -630,7 +630,7 @@ export default function Accounts() {
 
      {/* Delete Account Modal */}
 {isDeleteModalOpen && selectedUser && mounted && createPortal(
-  <div className="fixed inset-0 z-2000 flex items-center justify-center p-4">
+  <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4">
     <div 
       className="fixed inset-0 bg-black/40 backdrop-blur-sm transition-opacity duration-300 animate-fade-in"
       onClick={() => setIsDeleteModalOpen(false)}

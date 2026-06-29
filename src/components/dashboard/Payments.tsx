@@ -1,8 +1,7 @@
-"use client";
-
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { createPortal } from "react-dom";
 import { useSchool, Invoice } from "@/context/SchoolContext";
+import { useSearchParams, useRouter } from "next/navigation";
 import { 
   useInvoices, 
   usePayments, 
@@ -15,6 +14,8 @@ import CustomTable from "@/components/ui/CustomTable";
 import CustomSelect from "@/components/ui/CustomSelect";
 import { InvoiceModal } from "@/components/InvoiceModal";
 import { PaymentModal } from "@/components/PaymentModal";
+import { AdminPaymentModal } from "@/components/AdminPaymentModal";
+import { getPaymentAlerts } from "@/lib/payment-utils";
 import { FiUser, FiDollarSign, FiFileText } from "react-icons/fi";
 import { 
   FaFileInvoiceDollar, 
@@ -30,8 +31,11 @@ interface PaymentsProps {
   selectedChildId?: string; // Provided by Parent wrapper
 }
 
-export default function Payments({ selectedChildId }: PaymentsProps) {
+function PaymentsContent({ selectedChildId }: PaymentsProps) {
   const { currentUser } = useSchool();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const filterStudentId = searchParams.get("studentId");
   
   // Data Fetching
   const { data: invoices = [], isLoading: invoicesLoading } = useInvoices();
@@ -55,6 +59,7 @@ export default function Payments({ selectedChildId }: PaymentsProps) {
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [invoiceModalOpen, setInvoiceModalOpen] = useState(false);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [adminPaymentModalOpen, setAdminPaymentModalOpen] = useState(false);
 
   // Issue Invoice Modal State
   const [isIssueModalOpen, setIsIssueModalOpen] = useState(false);
@@ -63,6 +68,16 @@ export default function Payments({ selectedChildId }: PaymentsProps) {
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Handle cross-link student filtering
+  useEffect(() => {
+    if (filterStudentId && students.length > 0) {
+      const student = students.find(s => s.id === filterStudentId);
+      if (student) {
+        setInvoiceSearch(student.name);
+      }
+    }
+  }, [filterStudentId, students]);
 
   // Esc key & body scroll lock listener for modern modal UX
   useEffect(() => {
@@ -163,21 +178,21 @@ export default function Payments({ selectedChildId }: PaymentsProps) {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           <StatsCard
             title="Cumulative Billings"
-            total={`${totalInvoiced.toFixed(2)} €`}
+            total={`${totalInvoiced.toLocaleString()} KSh`}
             iconName="FiCreditCard"
             color="text-[#256ff1]"
             description="Total fees invoiced"
           />
           <StatsCard
             title="Settled Payments"
-            total={`${totalPaid.toFixed(2)} €`}
+            total={`${totalPaid.toLocaleString()} KSh`}
             iconName="FiDollarSign"
             color="text-emerald-500"
             description="Successfully paid invoices"
           />
           <StatsCard
             title="Outstanding Balances"
-            total={`${outstanding.toFixed(2)} €`}
+            total={`${outstanding.toLocaleString()} KSh`}
             iconName="FiAlertCircle"
             color="text-rose-500"
             description="Pending school collections"
@@ -195,9 +210,19 @@ export default function Payments({ selectedChildId }: PaymentsProps) {
           {/* Invoices List & Successful Settlement Logs */}
           <div className="w-full flex flex-col gap-6">
             <div className="flex flex-col gap-4">
-              <div>
-                <h2 className="text-lg font-extrabold text-slate-950 dark:text-slate-100">All Student Invoices</h2>
-                <p className="text-xs text-slate-400 mt-0.5">Historical overview of bills, due dates, and settlement status.</p>
+              <div className="flex justify-between items-center">
+                <div>
+                  <h2 className="text-lg font-extrabold text-slate-950 dark:text-slate-100">All Student Invoices</h2>
+                  <p className="text-xs text-slate-400 mt-0.5">Historical overview of bills, due dates, and settlement status.</p>
+                </div>
+                {invoiceSearch && (
+                  <button
+                    onClick={() => setInvoiceSearch("")}
+                    className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-850 dark:hover:bg-slate-800 text-slate-650 dark:text-slate-350 rounded-xl text-xs font-bold transition-all cursor-pointer border border-slate-200/40 dark:border-slate-700/40"
+                  >
+                    Clear Filter
+                  </button>
+                )}
               </div>
               
               <CustomTable
@@ -214,11 +239,25 @@ export default function Payments({ selectedChildId }: PaymentsProps) {
                   },
                   {
                     header: "Student",
-                    accessor: (inv) => <span className="font-semibold text-slate-950 dark:text-slate-100">{getStudentName(inv.studentId)}</span>
+                    accessor: (inv) => {
+                      const studentName = getStudentName(inv.studentId);
+                      return (
+                        <button
+                          onClick={() => {
+                            if (currentUser?.role) {
+                              router.push(`/dashboard/${currentUser.role}/students?search=${encodeURIComponent(studentName)}`);
+                            }
+                          }}
+                          className="font-semibold text-slate-950 dark:text-slate-100 hover:text-[#256ff1] dark:hover:text-blue-400 hover:underline text-left cursor-pointer transition-colors"
+                        >
+                          {studentName}
+                        </button>
+                      );
+                    }
                   },
                   {
                     header: "Billing Reference",
-                    accessor: (inv) => <span className="text-slate-650 dark:text-slate-400 max-w-[150px] truncate">{inv.description}</span>
+                    accessor: (inv) => <span className="text-slate-655 dark:text-slate-400 max-w-[150px] truncate">{inv.description}</span>
                   },
                   {
                     header: "Due Date",
@@ -226,35 +265,66 @@ export default function Payments({ selectedChildId }: PaymentsProps) {
                   },
                   {
                     header: "Amount",
-                    accessor: (inv) => <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{inv.amount.toFixed(2)} €</span>
+                    accessor: (inv) => <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{inv.amount.toLocaleString()} KSh</span>
                   },
                   {
-                    header: "Status",
-                    accessor: (inv) => (
-                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                        inv.status === "Paid" 
-                          ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300" 
-                          : "bg-rose-100 text-rose-800 dark:bg-rose-950/30 dark:text-rose-300"
-                      }`}>
-                        {inv.status}
-                      </span>
-                    )
+                    header: "Paid Status",
+                    accessor: (inv) => {
+                      const status = inv.status;
+                      const balance = inv.amount - (inv.paidAmount || 0);
+                      const alerts = getPaymentAlerts([inv], students as any);
+                      const hasAlert = alerts.length > 0;
+
+                      return (
+                        <div className="flex flex-col gap-1 items-center">
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest ${
+                            status === "Paid" ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-400" : 
+                            status === "Partially Paid" ? "bg-amber-50 text-amber-600 dark:bg-amber-950/30 dark:text-amber-400" :
+                            "bg-rose-50 text-rose-600 dark:bg-rose-950/30 dark:text-rose-400"
+                          }`}>
+                            {status} {status === "Partially Paid" && `(${balance.toLocaleString()} KSh left)`}
+                          </span>
+                          {hasAlert && (
+                            <span className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-tighter animate-pulse ${
+                              alerts[0].severity === "high" ? "bg-rose-600 text-white" : "bg-amber-500 text-white"
+                            }`}>
+                              Overdue Installment
+                            </span>
+                          )}
+                        </div>
+                      );
+                    }
                   },
                   {
                     header: "Action",
                     align: "center",
                     accessor: (inv) => (
-                      <button 
-                        onClick={() => {
-                          setSelectedInvoice(inv);
-                          setInvoiceModalOpen(true);
-                        }}
-                        className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold bg-indigo-50 text-indigo-650 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:text-indigo-400 rounded-xl cursor-pointer transition-all duration-300 transform hover:scale-[1.05] active:scale-[0.95] shadow-sm flex items-center justify-center shadow-indigo-500/5 hover:shadow-md"
-                        title="View Invoice Details"
-                      >
-                        <FaEye size={13} />
-                        Details
-                      </button>
+                      <div className="flex items-center gap-2 justify-center">
+                        <button 
+                          onClick={() => {
+                            setSelectedInvoice(inv);
+                            setInvoiceModalOpen(true);
+                          }}
+                          className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold bg-indigo-50 text-indigo-650 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:text-indigo-400 rounded-xl cursor-pointer transition-all duration-300 transform hover:scale-[1.05] active:scale-[0.95] shadow-sm flex items-center justify-center shadow-indigo-500/5 hover:shadow-md"
+                          title="View Invoice Details"
+                        >
+                          <FaEye size={13} />
+                          Details
+                        </button>
+                        {inv.status !== "Paid" && (
+                          <button 
+                            onClick={() => {
+                              setSelectedInvoice(inv);
+                              setAdminPaymentModalOpen(true);
+                            }}
+                            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold bg-emerald-50 text-emerald-650 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-400 rounded-xl cursor-pointer transition-all duration-300 transform hover:scale-[1.05] active:scale-[0.95] shadow-sm flex items-center justify-center shadow-emerald-500/5 hover:shadow-md"
+                            title="Record Payment"
+                          >
+                            <FaRegCreditCard size={13} />
+                            Record Payment
+                          </button>
+                        )}
+                      </div>
                     )
                   }
                 ]}
@@ -298,7 +368,7 @@ export default function Payments({ selectedChildId }: PaymentsProps) {
                   {
                     header: "Settled Amount",
                     align: "right",
-                    accessor: (p) => <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">+{p.amount.toFixed(2)} €</span>
+                    accessor: (p) => <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">+{p.amount.toLocaleString()} KSh</span>
                   }
                 ]}
               />
@@ -307,7 +377,7 @@ export default function Payments({ selectedChildId }: PaymentsProps) {
         </div>
               {/* Issue Invoice Modal with clean aesthetics (rendered via Portal) */}
         {isIssueModalOpen && mounted && createPortal(
-          <div className="fixed inset-0 z-2000 flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4">
             {/* Backdrop with soft blur */}
             <div 
               className="fixed inset-0 bg-black/40 backdrop-blur-sm transition-opacity duration-300 animate-fade-in"
@@ -337,9 +407,18 @@ export default function Payments({ selectedChildId }: PaymentsProps) {
                     Target Student
                   </label>
                   <CustomSelect
-                    options={students.map(s => ({ value: s.id, label: `${s.name} (${s.id})` }))}
+                    options={students.map(s => ({ value: s.id, label: `${s.name} (${s.courseLevel || 'No Level'})` }))}
                     value={invoiceStudentId}
-                    onChange={setInvoiceStudentId}
+                    onChange={(val) => {
+                      setInvoiceStudentId(val);
+                      const student = students.find(s => s.id === val);
+                      if (student?.courseLevel) {
+                        const level = student.courseLevel;
+                        if (level === "A1" || level === "A2") setInvoiceAmount("30000");
+                        if (level === "B1" || level === "B2") setInvoiceAmount("35000");
+                        setInvoiceDesc(`${level} Course Enrollment Fee`);
+                      }
+                    }}
                     placeholder="Choose student..."
                     buttonClassName="!border-2 !border-gray-200 dark:!border-slate-800 !rounded-xl hover:!border-[#256ff1]/60 transition-all !text-slate-800 dark:!text-slate-200 font-semibold"
                     style={{ backgroundColor: "oklch(96.8% .007 247.896)" }}
@@ -349,13 +428,13 @@ export default function Payments({ selectedChildId }: PaymentsProps) {
 
                 <div>
                   <label className="block text-sm font-semibold text-slate-800 dark:text-slate-200 mb-1.5">
-                    Invoiced Fee (EUR)
+                    Invoiced Fee (KSh)
                   </label>
                   <input 
                     type="number" 
                     step="0.01"
                     required 
-                    placeholder="e.g. 250.00"
+                    placeholder="e.g. 30000"
                     value={invoiceAmount}
                     onChange={(e) => setInvoiceAmount(e.target.value)}
                     className="w-full px-4 py-3 border-2 border-gray-200 dark:border-slate-800 rounded-xl focus:ring-2 focus:ring-[#256ff1] outline-none transition-all text-slate-800 dark:text-slate-200 placeholder-slate-400 bg-white"
@@ -414,6 +493,11 @@ export default function Payments({ selectedChildId }: PaymentsProps) {
           onClose={() => setInvoiceModalOpen(false)} 
           invoice={selectedInvoice}
           studentName={selectedInvoice ? getStudentName(selectedInvoice.studentId) : undefined}
+        />
+        <AdminPaymentModal
+          isOpen={adminPaymentModalOpen}
+          onClose={() => setAdminPaymentModalOpen(false)}
+          invoice={selectedInvoice}
         />
       </div>
     );
@@ -496,7 +580,7 @@ export default function Payments({ selectedChildId }: PaymentsProps) {
                     <td className="p-3.5 font-mono font-bold text-slate-700 dark:text-slate-300">{inv.id}</td>
                     <td className="p-3.5 text-slate-600 dark:text-slate-400 font-semibold">{inv.description}</td>
                     <td className="p-3.5 text-rose-500 font-bold">{inv.dueDate}</td>
-                    <td className="p-3.5 font-mono font-bold text-[#256ff1]">{inv.amount.toFixed(2)} €</td>
+                    <td className="p-3.5 font-mono font-bold text-[#256ff1]">{inv.amount.toLocaleString()} KSh</td>
                     <td className="p-3.5 text-right">
                       <button 
                         onClick={() => handlePayClick(inv)}
@@ -545,7 +629,7 @@ export default function Payments({ selectedChildId }: PaymentsProps) {
                       <td className="p-3.5 font-mono text-slate-400 dark:text-slate-500 font-bold">{p.id}</td>
                       <td className="p-3.5 font-semibold text-slate-800 dark:text-slate-200">{inv?.description || p.invoiceId}</td>
                       <td className="p-3.5 font-mono text-slate-400 dark:text-slate-500 font-bold">{p.date}</td>
-                      <td className="p-3.5 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">+{p.amount.toFixed(2)} €</td>
+                      <td className="p-3.5 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">+{p.amount.toLocaleString()} KSh</td>
                     </tr>
                   );
                 })}
@@ -561,9 +645,19 @@ export default function Payments({ selectedChildId }: PaymentsProps) {
           </div>
         </div>
 
-        <PaymentModal 
-          isOpen={paymentModalOpen} 
-          onClose={() => setPaymentModalOpen(false)} 
+        <InvoiceModal 
+          isOpen={invoiceModalOpen} 
+          onClose={() => setInvoiceModalOpen(false)} 
+          invoice={selectedInvoice} 
+        />
+        <AdminPaymentModal
+          isOpen={adminPaymentModalOpen}
+          onClose={() => setAdminPaymentModalOpen(false)}
+          invoice={selectedInvoice}
+        />
+        <PaymentModal
+          isOpen={paymentModalOpen}
+          onClose={() => setPaymentModalOpen(false)}
           invoice={selectedInvoice}
           onPaymentSuccess={handlePaymentSuccess}
         />
@@ -572,4 +666,16 @@ export default function Payments({ selectedChildId }: PaymentsProps) {
   }
 
   return null;
+}
+
+export default function Payments(props: PaymentsProps) {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="w-8 h-8 border-4 border-[#256ff1] border-t-transparent rounded-full animate-spin" />
+      </div>
+    }>
+      <PaymentsContent {...props} />
+    </Suspense>
+  );
 }

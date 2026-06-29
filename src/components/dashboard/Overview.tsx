@@ -13,12 +13,13 @@ import { PageHeader } from "@/components/PageHeader";
 import StatsCard from "@/components/StatsCard";
 import AdminChartsSection from "@/components/AdminChartsSection";
 import { InvoiceModal } from "@/components/InvoiceModal";
+import { getPaymentAlerts } from "@/lib/payment-utils";
 import { 
-  FaRedo, 
   FaEye, 
   FaChalkboardTeacher, 
   FaGraduationCap, 
-  FaClock 
+  FaClock,
+  FaExclamationTriangle
 } from "react-icons/fa";
 
 interface OverviewProps {
@@ -26,7 +27,7 @@ interface OverviewProps {
 }
 
 export default function Overview({ selectedChildId }: OverviewProps) {
-  const { currentUser, resetDatabase, setActiveTab } = useSchool();
+  const { currentUser, setActiveTab } = useSchool();
   
   // Fetching data via granular React Query hooks
   const { data: students = [], isLoading: studentsLoading } = useStudents();
@@ -84,19 +85,6 @@ export default function Overview({ selectedChildId }: OverviewProps) {
               ? "Real-time system operations, performance metrics, and security audit metrics."
               : "Real-time system operations, student enrollment metrics, and outstanding tuition summaries."
           }
-          actionButton={
-            role === "super-admin" 
-              ? {
-                  text: "Reset Sandbox DB",
-                  icon: <FaRedo size={12} />,
-                  onClick: () => {
-                    if (confirm("Reset Sandbox Database? This will erase all student profiles, invoices, grades, and logs to initial defaults.")) {
-                      resetDatabase();
-                    }
-                  }
-                }
-              : undefined
-          }
         />
 
         {/* Quick Metrics */}
@@ -117,14 +105,14 @@ export default function Overview({ selectedChildId }: OverviewProps) {
           />
           <StatsCard
             title="Collected Fees"
-            total={`${totalPaid.toFixed(2)} €`}
+            total={`${totalPaid.toLocaleString()} KSh`}
             iconName="FiDollarSign"
             color="text-emerald-500"
             description="Paid invoices settled"
           />
           <StatsCard
             title="Outstanding"
-            total={`${outstanding.toFixed(2)} €`}
+            total={`${outstanding.toLocaleString()} KSh`}
             iconName="FiAlertCircle"
             color="text-rose-500"
             description="Pending school invoices"
@@ -133,6 +121,69 @@ export default function Overview({ selectedChildId }: OverviewProps) {
 
         {/* Dynamic Interactive Charts */}
         <AdminChartsSection currentUser={currentUser} setActiveTab={setActiveTab} />
+
+        {/* Payment Installment Alerts */}
+        {(role === "super-admin" || role === "admin") && (
+          <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl p-6 shadow-sm shadow-slate-100/10">
+            <div className="flex items-center gap-2 mb-6">
+              <div className="p-2 bg-amber-50 dark:bg-amber-950/30 text-amber-600 rounded-lg">
+                <FaExclamationTriangle size={18} />
+              </div>
+              <div>
+                <h2 className="text-lg font-extrabold text-slate-950 dark:text-slate-100">Payment Installment Alerts</h2>
+                <p className="text-xs text-slate-400 mt-0.5">Students who reached the halfway mark but haven&apos;t cleared their balance.</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {getPaymentAlerts(invoices, students as any).map(alert => (
+                <div 
+                  key={alert.invoiceId}
+                  className={`p-4 rounded-xl border flex flex-col justify-between transition-all hover:shadow-md ${
+                    alert.severity === "high" 
+                      ? "bg-rose-50/50 border-rose-100 dark:bg-rose-950/10 dark:border-rose-900/30" 
+                      : "bg-amber-50/50 border-amber-100 dark:bg-amber-950/10 dark:border-amber-900/30"
+                  }`}
+                >
+                  <div>
+                    <div className="flex justify-between items-start mb-2">
+                      <span className="font-bold text-slate-900 dark:text-slate-100 text-sm">{alert.studentName}</span>
+                      <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest ${
+                        alert.severity === "high" ? "bg-rose-100 text-rose-600" : "bg-amber-100 text-amber-600"
+                      }`}>
+                        {alert.severity} Priority
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-600 dark:text-slate-400 font-medium mb-3">{alert.message}</p>
+                  </div>
+                  
+                  <div className="flex items-center justify-between mt-2 pt-3 border-t border-black/5 dark:border-white/5">
+                    <div className="text-[10px] font-bold text-slate-500">
+                      Balance: <span className="text-slate-900 dark:text-slate-100 font-mono">{alert.balance.toLocaleString()} KSh</span>
+                    </div>
+                    <button 
+                      onClick={() => {
+                        const inv = invoices.find(i => i.id === alert.invoiceId);
+                        if (inv) {
+                          setSelectedInvoice(inv);
+                          setInvoiceModalOpen(true);
+                        }
+                      }}
+                      className="text-[10px] font-black text-[#256ff1] uppercase tracking-widest hover:underline"
+                    >
+                      View Invoice
+                    </button>
+                  </div>
+                </div>
+              ))}
+              {getPaymentAlerts(invoices, students as any).length === 0 && (
+                <div className="col-span-full py-6 text-center text-slate-400 font-medium text-sm italic">
+                  No active payment installment alerts. All students are within their payment schedules.
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Outstanding Invoices List (Only Admin View) */}
         {role === "admin" && (
@@ -163,7 +214,7 @@ export default function Overview({ selectedChildId }: OverviewProps) {
                       <td className="py-4 px-4 font-semibold text-slate-900 dark:text-slate-100">{getStudentName(inv.studentId)}</td>
                       <td className="py-4 px-4 text-slate-600 dark:text-slate-400 max-w-[200px] truncate">{inv.description}</td>
                       <td className="py-4 px-4 font-semibold text-rose-500">{inv.dueDate}</td>
-                      <td className="py-4 px-4 font-mono font-bold text-[#256ff1]">{inv.amount.toFixed(2)} €</td>
+                      <td className="py-4 px-4 font-mono font-bold text-[#256ff1]">{inv.amount.toLocaleString()} KSh</td>
                       <td className="py-4 px-4 text-center">
                         <button 
                           onClick={() => {

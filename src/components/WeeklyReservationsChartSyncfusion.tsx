@@ -48,7 +48,7 @@ export default function WeeklyReservationsChartSyncfusion({ data, total }: Weekl
           {args.x}
         </p>
         <p style={{ color: chartColors.tooltipText }} className="text-sm">
-          Reservations:{" "}
+          Check-ins:{" "}
           <span
             style={{ color: chartColors.tooltipValue }}
             className="text-sm font-medium"
@@ -65,7 +65,7 @@ export default function WeeklyReservationsChartSyncfusion({ data, total }: Weekl
       <div className="flex items-center justify-between mb-6">
         <div>
           <h3 className="text-lg font-semibold text-gray-900">
-            Weekly Reservations
+            Weekly Class Attendance
           </h3>
           <p className="text-sm text-gray-500">
             Last 7 days overview
@@ -76,7 +76,7 @@ export default function WeeklyReservationsChartSyncfusion({ data, total }: Weekl
             {total}
           </p>
           <p className="text-xs text-gray-500">
-            Total bookings
+            Total student check-ins
           </p>
         </div>
       </div>
@@ -103,7 +103,7 @@ export default function WeeklyReservationsChartSyncfusion({ data, total }: Weekl
         }}
         primaryYAxis={{
           minimum: 0,
-          title: "Reservations",
+          title: "Attendance Records",
           titleStyle: {
             size: "14px",
             fontWeight: "600",

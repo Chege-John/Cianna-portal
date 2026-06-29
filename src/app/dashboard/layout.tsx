@@ -5,6 +5,7 @@ import { useSchool } from "@/context/SchoolContext";
 import { useRouter, usePathname } from "next/navigation";
 import { DashboardSidebar } from "@/components/DashboardSidebar";
 import { DashboardHeader } from "@/components/DashboardHeader";
+import FirstLoginModal from "@/app/FirstLoginModal";
 
 export default function DashboardLayout({
   children
@@ -15,6 +16,14 @@ export default function DashboardLayout({
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
+
+  const [showFirstLogin, setShowFirstLogin] = useState(false);
+
+  useEffect(() => {
+    if (currentUser?.mustChangePassword) {
+      setShowFirstLogin(true);
+    }
+  }, [currentUser]);
 
   // Route protection & role-based routing redirection
   useEffect(() => {
@@ -77,6 +86,15 @@ export default function DashboardLayout({
           </main>
         </div>
       </div>
+
+      <FirstLoginModal 
+        isOpen={showFirstLogin} 
+        firstLoginData={{ isFirstLogin: true, requiresPasswordChange: true, requiresPinChange: false }}
+        onComplete={() => {
+          setShowFirstLogin(false);
+          window.location.reload(); // Refresh to get updated user state without mustChangePassword
+        }}
+      />
     </div>
   );
 }

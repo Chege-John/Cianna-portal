@@ -2,6 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import * as schoolActions from "@/server-actions/school";
+import * as paymentActions from "@/server-actions/payments";
 
 // ==========================================
 // 1. SYSTEM USER HOOKS
@@ -27,11 +28,9 @@ export function useStudents() {
       
       // Merge user data into profile for UI convenience
       return dbStudents.map((s) => ({
-        id: s.id,
+        ...s,
         name: dbUsers.find((u) => u.id === s.id)?.name || "Unknown",
         email: dbUsers.find((u) => u.id === s.id)?.email || "",
-        classroomId: s.classroomId || "",
-        parentEmail: s.parentEmail || undefined,
       }));
     },
   });
@@ -126,6 +125,20 @@ export function usePayments() {
   });
 }
 
+export function useBanks() {
+  return useQuery({
+    queryKey: ["banks"],
+    queryFn: () => paymentActions.getBanks(),
+  });
+}
+
+export function usePaymentSettings() {
+  return useQuery({
+    queryKey: ["paymentSettings"],
+    queryFn: () => paymentActions.getPaymentSettings(),
+  });
+}
+
 // ==========================================
 // 3. MUTATIONS (DATA UPDATES)
 // ==========================================
@@ -134,8 +147,25 @@ export function useSchoolMutations() {
   const queryClient = useQueryClient();
 
   const addStudent = useMutation({
-    mutationFn: (data: { name: string; email: string; classroomId: string; parentEmail?: string }) =>
-      schoolActions.addStudentAction(data.name, data.email, data.classroomId, data.parentEmail),
+    mutationFn: (data: { 
+      name: string; 
+      email: string; 
+      classroomId: string; 
+      firstName: string;
+      lastName: string;
+      dob: string;
+      nationality: string;
+      idNumber: string;
+      profession: string;
+      courseLevel: "A1" | "A2" | "B1" | "B2";
+      schedule: "Online" | "Physical" | "Hybrid";
+      phoneNumber: string;
+      guardianName: string;
+      guardianRelationship: string;
+      guardianPhone: string;
+      parentEmail?: string; 
+    }) =>
+      schoolActions.addStudentAction(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["students"] });
       queryClient.invalidateQueries({ queryKey: ["users"] });
@@ -190,8 +220,8 @@ export function useSchoolMutations() {
   });
 
   const payInvoice = useMutation({
-    mutationFn: (data: { invoiceId: string; paymentMethod: string }) =>
-      schoolActions.payInvoiceAction(data.invoiceId, data.paymentMethod),
+    mutationFn: (data: { invoiceId: string; paymentMethod: string; amount?: number; reference?: string }) =>
+      schoolActions.payInvoiceAction(data.invoiceId, data.paymentMethod, data.amount, data.reference),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["invoices"] });
       queryClient.invalidateQueries({ queryKey: ["payments"] });
@@ -220,6 +250,25 @@ export function useSchoolMutations() {
     },
   });
 
+  const updatePaymentSettings = useMutation({
+    mutationFn: (data: { bankName: string; accountReference: string }) =>
+      paymentActions.updatePaymentSettingsAction(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["paymentSettings"] });
+    },
+  });
+
+  const initiatePayment = useMutation({
+    mutationFn: (data: {
+      amount: number;
+      phoneNumber: string;
+      orderId: string;
+      bankName: string;
+      accountReference: string;
+      callbackUrl: string;
+    }) => paymentActions.initiatePaymentAction(data),
+  });
+
   return {
     addStudent,
     addTeacher,
@@ -230,6 +279,8 @@ export function useSchoolMutations() {
     payInvoice,
     updateUser,
     deleteUser,
+    updatePaymentSettings,
+    initiatePayment,
   };
 }
 

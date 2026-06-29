@@ -192,7 +192,7 @@ export default function Classes() {
 
         {/* Create Class Modal with premium aesthetics & backdrop blur (rendered via Portal) */}
         {isClassModalOpen && mounted && createPortal(
-          <div className="fixed inset-0 z-2000 flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4">
             {/* Backdrop with soft blur */}
             <div 
               className="fixed inset-0 bg-black/40 backdrop-blur-sm transition-opacity duration-300 animate-fade-in"
